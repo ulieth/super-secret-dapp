@@ -24,3 +24,11 @@ pub struct DeleteProfileEvent {
   pub profile_name: String,
   pub deleted_at: i64,
 }
+
+#[event]
+pub struct PauseProfileEvent {
+  pub profile_key: Pubkey,
+  pub profile_name: String,
+  pub paused: bool,
+  pub updated_at: i64,
+}

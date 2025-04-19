@@ -223,6 +223,64 @@ export type Secret = {
       "args": []
     },
     {
+      "name": "pauseProfile",
+      "discriminator": [
+        162,
+        93,
+        223,
+        189,
+        233,
+        210,
+        232,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "profile"
+          ]
+        },
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "account",
+                "path": "profile.profile_name",
+                "account": "profile"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "updateProfileBio",
       "discriminator": [
         161,
@@ -321,6 +379,19 @@ export type Secret = {
         137,
         194,
         4
+      ]
+    },
+    {
+      "name": "pauseProfileEvent",
+      "discriminator": [
+        251,
+        99,
+        6,
+        7,
+        129,
+        139,
+        223,
+        81
       ]
     },
     {
@@ -432,6 +503,30 @@ export type Secret = {
           },
           {
             "name": "deletedAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pauseProfileEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "profileKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "profileName",
+            "type": "string"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "updatedAt",
             "type": "i64"
           }
         ]

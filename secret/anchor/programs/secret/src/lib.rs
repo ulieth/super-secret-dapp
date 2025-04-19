@@ -152,6 +152,23 @@ pub mod secret {
 
     }
 
+    pub fn pause_profile(ctx: Context<PauseProfile>, paused: bool) -> Result<()> {
+        let profile = &mut ctx.accounts.profile;
+        let current_time = Clock::get()?.unix_timestamp;
+
+        profile.paused = paused;
+        profile.updated_at = current_time;
+
+        emit!(PauseProfileEvent {
+            profile_key: profile.key(),
+            profile_name: profile.profile_name.clone(),
+            paused,
+            updated_at: current_time,
+        });
+
+        Ok(())
+    }
+
 
 
 }
@@ -258,6 +275,21 @@ pub struct DeleteProfile<'info> {
     pub recipient: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(paused: bool)]
+pub struct PauseProfile<'info> {
+    #[account(mut)]
+    authority: Signer<'info>,
+
+    #[account(
+      mut,
+      seeds = [b"profile", authority.key().as_ref(), profile.profile_name.as_bytes()],
+      bump,
+      has_one = authority
+    )]
+    profile: Account<'info, Profile>
 }
 
 /**
