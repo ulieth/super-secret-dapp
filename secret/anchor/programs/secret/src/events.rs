@@ -32,3 +32,12 @@ pub struct PauseProfileEvent {
   pub paused: bool,
   pub updated_at: i64,
 }
+
+#[event]
+pub struct MakeLikeEvent {
+  pub liker_key: Pubkey,
+  pub profile_key: Pubkey,
+  pub profile_name: String,
+  pub amount: u64,
+  pub created_at: i64,
+}

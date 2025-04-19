@@ -62,7 +62,7 @@ export type Secret = {
         {
           "name": "vault",
           "docs": [
-            "The vault that will hold SOL for each received super like.",
+            "The vault that will hold SOL for each received like.",
             "Why we use a separate vault:",
             "- Solana accounts must remain **rent-exempt** to persist.",
             "- If we store lamports directly in the `User` account and its balance drops below",
@@ -223,6 +223,95 @@ export type Secret = {
       "args": []
     },
     {
+      "name": "giveLike",
+      "discriminator": [
+        12,
+        155,
+        32,
+        22,
+        30,
+        51,
+        5,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "liker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "profile",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "profile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "like",
+          "docs": [
+            "Likes account to keep track of history"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  105,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "liker"
+              },
+              {
+                "kind": "account",
+                "path": "profile"
+              },
+              {
+                "kind": "account",
+                "path": "profile.like_count",
+                "account": "profile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "pauseProfile",
       "discriminator": [
         162,
@@ -341,6 +430,19 @@ export type Secret = {
   ],
   "accounts": [
     {
+      "name": "like",
+      "discriminator": [
+        10,
+        133,
+        129,
+        201,
+        87,
+        218,
+        203,
+        222
+      ]
+    },
+    {
       "name": "profile",
       "discriminator": [
         184,
@@ -379,6 +481,19 @@ export type Secret = {
         137,
         194,
         4
+      ]
+    },
+    {
+      "name": "makeLikeEvent",
+      "discriminator": [
+        98,
+        190,
+        40,
+        254,
+        189,
+        84,
+        185,
+        65
       ]
     },
     {
@@ -453,6 +568,11 @@ export type Secret = {
       "code": 6008,
       "name": "overflow",
       "msg": "overflow"
+    },
+    {
+      "code": 6009,
+      "name": "profilePaused",
+      "msg": "Profile paused"
     }
   ],
   "types": [
@@ -503,6 +623,62 @@ export type Secret = {
           },
           {
             "name": "deletedAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "like",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "likerKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "profileKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "profileName",
+            "type": "string"
+          },
+          {
+            "name": "likesInLamports",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "makeLikeEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "likerKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "profileKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "profileName",
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
             "type": "i64"
           }
         ]
@@ -563,6 +739,14 @@ export type Secret = {
           {
             "name": "avatarUri",
             "type": "string"
+          },
+          {
+            "name": "likeCount",
+            "type": "u64"
+          },
+          {
+            "name": "likesInLamports",
+            "type": "u64"
           },
           {
             "name": "createdAt",

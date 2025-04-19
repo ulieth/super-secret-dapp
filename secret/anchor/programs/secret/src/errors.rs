@@ -28,4 +28,7 @@ pub enum CustomError {
 
     #[msg("Overflow")]
     Overflow,
+
+    #[msg("Profile paused")]
+    ProfilePaused,
 }

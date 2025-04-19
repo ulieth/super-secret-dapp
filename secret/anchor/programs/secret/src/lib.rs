@@ -54,6 +54,8 @@ pub mod secret {
             gender,
             looking_for,
             avatar_uri,
+            like_count: 0,
+            likes_in_lamports: 0,
             created_at: current_time,
             updated_at: current_time,
             paused: false,
@@ -169,6 +171,64 @@ pub mod secret {
         Ok(())
     }
 
+    pub fn give_like(ctx: Context<GiveLike>, amount: u64) -> Result<()> {
+        let liker = &mut ctx.accounts.liker;
+        let profile = &mut ctx.accounts.profile;
+        let vault = &mut ctx.accounts.vault;
+        let like = &mut ctx.accounts.like;
+        let current_time = Clock::get()?.unix_timestamp;
+
+        require!(!profile.paused, CustomError::ProfilePaused);
+
+        let (expected_vault, _vault_bump) =
+            Pubkey::find_program_address(&[b"vault", profile.key().as_ref(), profile.profile_name.as_bytes()], ctx.program_id);
+        require_keys_eq!(
+            vault.key(),
+            expected_vault,
+            CustomError::InvalidVaultAccount
+        );
+
+        // Create the transfer instruction from liker to vault PDA
+        let transfer_instruction = system_instruction::transfer(liker.key, vault.key, amount);
+
+        anchor_lang::solana_program::program::invoke(
+            &transfer_instruction,
+            &[
+                liker.to_account_info(),
+                vault.to_account_info(),
+                ctx.accounts.system_program.to_account_info()
+            ],
+        )?;
+
+        // Update profile state
+        profile.like_count = profile
+            .like_count
+            .checked_add(1)
+            .ok_or(error!(CustomError::Overflow))?;
+        profile.likes_in_lamports = profile
+            .likes_in_lamports
+            .checked_add(amount)
+            .ok_or(error!(CustomError::Overflow))?;
+
+        // Record donation history
+        like.liker_key = liker.key();
+        like.profile_key = profile.key();
+        like.profile_name = profile.profile_name.clone();
+        like.likes_in_lamports = amount;
+        like.created_at = current_time;
+
+        emit!(MakeLikeEvent {
+            liker_key: liker.key(),
+            profile_key: profile.key(),
+            profile_name: profile.profile_name.clone(),
+            amount,
+            created_at: current_time,
+        });
+
+
+        Ok(())
+    }
+
 
 
 }
@@ -194,7 +254,7 @@ pub struct CreateProfile<'info> {
     )]
     profile: Account<'info, Profile>,
 
-    /// The vault that will hold SOL for each received super like.
+    /// The vault that will hold SOL for each received like.
     /// Why we use a separate vault:
     /// - Solana accounts must remain **rent-exempt** to persist.
     /// - If we store lamports directly in the `User` account and its balance drops below
@@ -220,7 +280,7 @@ pub struct CreateProfile<'info> {
         payer = authority,
         space = 0, // No data, just holds lamports
         seeds = [b"vault", profile.key().as_ref()],
-        bump
+        bump,
     )]
     /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
     pub vault: UncheckedAccount<'info>,
@@ -292,6 +352,36 @@ pub struct PauseProfile<'info> {
     profile: Account<'info, Profile>
 }
 
+#[derive(Accounts)]
+#[instruction(amount: u64)]
+pub struct GiveLike<'info> {
+    #[account(mut)]
+    liker: Signer<'info>,
+
+    #[account(mut)]
+    profile: Account<'info, Profile>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", profile.key().as_ref()],
+        bump
+    )]
+    /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
+    pub vault: UncheckedAccount<'info>,
+
+    /// Likes account to keep track of history
+    #[account(
+      init,
+      payer = liker,
+      space = ANCHOR_DISCRIMINATOR_SIZE + Like::INIT_SPACE,
+      seeds = [b"like", liker.key().as_ref(), profile.key().as_ref(),  &profile.like_count.to_le_bytes()],
+      bump
+    )]
+    pub like: Account<'info, Like>,
+
+    pub system_program: Program<'info, System>
+}
+
 /**
  * STATE
  */
@@ -309,9 +399,22 @@ pub struct Profile {
     pub looking_for: String, // Match preference
     #[max_len(AVATAR_URI_MAX_LEN)]
     pub avatar_uri: String, // IPFS link
+    pub like_count: u64, // Number of likes received
+    pub likes_in_lamports: u64, // Running total of SOL received (in lamports)
     pub created_at: i64, // When profile was created
     pub updated_at: i64, // When profile was updated
     pub paused: bool, // Reject new matches
     pub deleted_at: Option<i64>, // When profile was deleted
     pub vault_bump: u8, // Reference to associated vault PDA
+}
+
+#[account]
+#[derive(InitSpace, Debug)]
+pub struct Like {
+    pub liker_key: Pubkey, // Key of wallet that sent a like
+    pub profile_key: Pubkey, // Key of profile that received a like
+    #[max_len(PROFILE_NAME_MAX_LEN)]
+    pub profile_name: String,
+    pub likes_in_lamports: u64,
+    pub created_at: i64,     // When donation was made
 }
