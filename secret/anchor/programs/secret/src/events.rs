@@ -17,3 +17,10 @@ pub struct UpdateProfileEvent {
   pub bio: String,
   pub updated_at: i64,
 }
+
+#[event]
+pub struct DeleteProfileEvent {
+  pub profile_key: Pubkey,
+  pub profile_name: String,
+  pub deleted_at: i64,
+}

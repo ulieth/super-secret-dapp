@@ -85,7 +85,7 @@ pub mod secret {
 
         require!(
             !bio.eq(&profile.bio),
-            CustomError::AlreadyUpdated
+            CustomError::InvalidBio
         );
         require!(
             bio.len() <= BIO_MAX_LEN,
@@ -93,6 +93,7 @@ pub mod secret {
         );
 
         profile.bio = bio;
+        profile.updated_at = current_time;
 
         emit!(UpdateProfileEvent {
             profile_key: profile.key(),
@@ -103,6 +104,54 @@ pub mod secret {
 
         Ok(())
     }
+
+    pub fn delete_profile(ctx: Context<DeleteProfile>) -> Result<()> {
+        let profile = &mut ctx.accounts.profile;
+        let vault = &mut ctx.accounts.vault;
+        let authority = &mut ctx.accounts.authority;
+        let recipient = &mut ctx.accounts.recipient;
+        let current_time = Clock::get()?.unix_timestamp;
+
+        let (expected_vault, _vault_bump) =
+            Pubkey::find_program_address(&[b"vault", profile.key().as_ref(), profile.profile_name.as_bytes()], ctx.program_id);
+        require_keys_eq!(
+            vault.key(),
+            expected_vault,
+            CustomError::InvalidVaultAccount
+        );
+
+        let vault_balance = **vault.lamports.borrow();
+
+        if vault_balance > 0 {
+            if recipient.lamports() > 0 {
+                // Transfer to recipient
+                **vault.lamports.borrow_mut() = vault_balance.checked_sub(vault_balance).unwrap();
+                **recipient.lamports.borrow_mut() = recipient
+                    .lamports()
+                    .checked_add(vault_balance)
+                    .ok_or(error!(CustomError::Overflow))?;
+            } else {
+                // Transfer to authority
+                **vault.lamports.borrow_mut() = vault_balance.checked_sub(vault_balance).unwrap();
+                **authority.lamports.borrow_mut() = authority
+                    .lamports()
+                    .checked_add(vault_balance)
+                    .ok_or(error!(CustomError::Overflow))?;
+              }
+        }
+        msg!("Profile deleted: {}", profile.profile_name);
+
+        emit!(DeleteProfileEvent {
+          profile_key: profile.key(),
+          profile_name: profile.profile_name.clone(),
+          deleted_at: current_time,
+        });
+
+
+        Ok(())
+
+    }
+
 
 
 }
@@ -123,7 +172,7 @@ pub struct CreateProfile<'info> {
         init,
         payer = authority,
         space = ANCHOR_DISCRIMINATOR_SIZE + Profile::INIT_SPACE,
-        seeds = [b"profile", authority.key().as_ref()],
+        seeds = [b"profile", authority.key().as_ref(), profile_name.as_bytes()],
         bump
     )]
     profile: Account<'info, Profile>,
@@ -177,6 +226,40 @@ pub struct UpdateProfile<'info> {
     pub profile: Account<'info, Profile>,
 }
 
+#[derive(Accounts)]
+pub struct DeleteProfile<'info> {
+    #[account(mut)]
+    authority: Signer<'info>,
+
+    #[account(
+        mut,
+        close = authority,
+        seeds = [b"profile", authority.key().as_ref(), profile.profile_name.as_bytes()],
+        bump,
+        has_one = authority,
+    )]
+    profile: Account<'info, Profile>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", profile.key().as_ref()],
+        bump
+    )]
+    /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
+    vault: UncheckedAccount<'info>,
+
+    /// Destination account that will receive the withdrawn SOL
+    /// Allows the profile authority to send funds to a different address than their own
+    /// Why `UncheckedAccount`:
+    /// - We're only transferring SOL (no deserialization required)
+    /// - We're not enforcing any constraints on it through Anchor's account validation
+    #[account(mut)]
+    /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
+    pub recipient: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 /**
  * STATE
  */
@@ -185,9 +268,9 @@ pub struct UpdateProfile<'info> {
 pub struct Profile {
     pub authority: Pubkey, // Wallet controlling the user profile
     #[max_len(PROFILE_NAME_MAX_LEN)]
-    pub profile_name: String, // Profile name
+    pub profile_name: String,
     #[max_len(BIO_MAX_LEN)]
-    pub bio: String, // Description of charity
+    pub bio: String,
     #[max_len(GENDER_MAX_LEN)]
     pub gender: String,
     #[max_len(LOOKING_FOR_MAX_LEN)]

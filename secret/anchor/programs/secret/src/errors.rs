@@ -20,6 +20,12 @@ pub enum CustomError {
     #[msg("Invalid avatar URI length")]
     InvalidAvatarURILength,
 
-    #[msg("Already updated")]
-    AlreadyUpdated,
+    #[msg("Invalid bio")]
+    InvalidBio,
+
+    #[msg("Invalid vault account")]
+    InvalidVaultAccount,
+
+    #[msg("Overflow")]
+    Overflow,
 }
