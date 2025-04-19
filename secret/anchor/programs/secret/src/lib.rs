@@ -60,6 +60,7 @@ pub mod secret {
             updated_at: current_time,
             paused: false,
             deleted_at: None,
+            withdrawn_at: None,
             vault_bump: ctx.bumps.vault,
         };
 
@@ -229,6 +230,65 @@ pub mod secret {
         Ok(())
     }
 
+    pub fn withdraw_likes(ctx: Context<WithdrawLikes>, amount: u64) -> Result<()> {
+      let recipient = &mut ctx.accounts.recipient;
+      let profile = &mut ctx.accounts.profile;
+      let vault = &mut ctx.accounts.vault;
+      let current_time = Clock::get()?.unix_timestamp;
+
+      let (expected_vault, _vault_bump) =
+          Pubkey::find_program_address(&[b"vault", profile.key().as_ref(), profile.profile_name.as_bytes()], ctx.program_id);
+      require_keys_eq!(
+          vault.key(),
+          expected_vault,
+          CustomError::InvalidVaultAccount
+      );
+
+      // Ensure there are enough lamports to withdraw
+      let vault_balance = **vault.lamports.borrow();
+      require!(
+          amount > 0 && vault_balance >= amount,
+          CustomError::InsufficientFunds
+      );
+
+      let rent = Rent::get()?;
+      let min_rent = rent.minimum_balance(0);
+
+      // Ensure we maintain rent-exemption threshold
+      require!(
+          vault_balance.checked_sub(amount).unwrap_or(0) >= min_rent,
+          CustomError::InsufficientFundsForRent
+      );
+
+      // Transfer lamports from vault to recipient via direct lamport manipulation
+      // - Program-owned accounts cannot use the System Program's transfer instruction directly to send lamports.
+      // - Instead, we modify the lamport balances directly.
+      // - The program has authority to modify the lamport balances of accounts it owns.
+      // - Total sum of lamports must remain the same before and after a transaction.
+      **vault.lamports.borrow_mut() = vault_balance.checked_sub(amount).unwrap();
+      **recipient.lamports.borrow_mut() = recipient
+          .lamports()
+          .checked_add(amount)
+          .ok_or(error!(CustomError::Overflow))?;
+
+      // Update profile state
+      profile.likes_in_lamports = profile
+          .likes_in_lamports
+          .checked_sub(amount)
+          .ok_or(error!(CustomError::Overflow))?;
+      profile.withdrawn_at = Some(current_time);
+
+      emit!(WithdrawLikesSolEvent {
+          profile_key: profile.key(),
+          profile_name: profile.profile_name.clone(),
+          likes_in_lamports: profile.likes_in_lamports,
+          like_count: profile.like_count,
+          withdrawn_at: current_time,
+      });
+
+      Ok(())
+  }
+
 
 
 }
@@ -382,6 +442,38 @@ pub struct GiveLike<'info> {
     pub system_program: Program<'info, System>
 }
 
+#[derive(Accounts)]
+#[instruction(amount: u64)]
+pub struct WithdrawLikes<'info> {
+      #[account(mut)]
+      pub authority: Signer<'info>,
+
+      #[account(
+          mut,
+          has_one = authority
+      )]
+      pub profile: Account<'info, Profile>,
+
+      #[account(
+          mut,
+          seeds = [b"vault", profile.key().as_ref()],
+          bump
+      )]
+      /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
+      pub vault: UncheckedAccount<'info>,
+
+      /// Destination account that will receive the withdrawn SOL
+      /// Allows the charity authority to send funds to a different address than their own
+      /// Why `UncheckedAccount`:
+      /// - We're only transferring SOL (no deserialization required)
+      /// - We're not enforcing any constraints on it through Anchor's account validation
+      #[account(mut)]
+      /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
+      pub recipient: UncheckedAccount<'info>,
+
+      pub system_program: Program<'info, System>,
+}
+
 /**
  * STATE
  */
@@ -405,6 +497,7 @@ pub struct Profile {
     pub updated_at: i64, // When profile was updated
     pub paused: bool, // Reject new matches
     pub deleted_at: Option<i64>, // When profile was deleted
+    pub withdrawn_at: Option<i64>, // When likes were withdrawn
     pub vault_bump: u8, // Reference to associated vault PDA
 }
 

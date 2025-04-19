@@ -41,3 +41,12 @@ pub struct MakeLikeEvent {
   pub amount: u64,
   pub created_at: i64,
 }
+
+#[event]
+pub struct WithdrawLikesSolEvent {
+  pub profile_key: Pubkey,
+  pub profile_name: String,
+  pub likes_in_lamports: u64,
+  pub like_count: u64,
+  pub withdrawn_at: i64,
+}

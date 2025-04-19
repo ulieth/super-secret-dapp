@@ -31,4 +31,10 @@ pub enum CustomError {
 
     #[msg("Profile paused")]
     ProfilePaused,
+
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
+
+    #[msg("Insufficient funds for rent")]
+    InsufficientFundsForRent,
 }

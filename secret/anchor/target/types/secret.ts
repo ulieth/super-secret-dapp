@@ -426,6 +426,76 @@ export type Secret = {
           "type": "string"
         }
       ]
+    },
+    {
+      "name": "withdrawLikes",
+      "discriminator": [
+        188,
+        75,
+        118,
+        33,
+        178,
+        250,
+        191,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "profile"
+          ]
+        },
+        {
+          "name": "profile",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "profile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "docs": [
+            "Destination account that will receive the withdrawn SOL",
+            "Allows the charity authority to send funds to a different address than their own",
+            "Why `UncheckedAccount`:",
+            "- We're only transferring SOL (no deserialization required)",
+            "- We're not enforcing any constraints on it through Anchor's account validation"
+          ],
+          "writable": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -521,6 +591,19 @@ export type Secret = {
         250,
         45
       ]
+    },
+    {
+      "name": "withdrawLikesSolEvent",
+      "discriminator": [
+        1,
+        6,
+        153,
+        186,
+        189,
+        204,
+        75,
+        252
+      ]
     }
   ],
   "errors": [
@@ -573,6 +656,16 @@ export type Secret = {
       "code": 6009,
       "name": "profilePaused",
       "msg": "Profile paused"
+    },
+    {
+      "code": 6010,
+      "name": "insufficientFunds",
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6011,
+      "name": "insufficientFundsForRent",
+      "msg": "Insufficient funds for rent"
     }
   ],
   "types": [
@@ -767,6 +860,12 @@ export type Secret = {
             }
           },
           {
+            "name": "withdrawnAt",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
             "name": "vaultBump",
             "type": "u8"
           }
@@ -792,6 +891,34 @@ export type Secret = {
           },
           {
             "name": "updatedAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "withdrawLikesSolEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "profileKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "profileName",
+            "type": "string"
+          },
+          {
+            "name": "likesInLamports",
+            "type": "u64"
+          },
+          {
+            "name": "likeCount",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawnAt",
             "type": "i64"
           }
         ]
