@@ -51,6 +51,10 @@ export type Secret = {
               {
                 "kind": "account",
                 "path": "authority"
+              },
+              {
+                "kind": "arg",
+                "path": "profileName"
               }
             ]
           }
@@ -127,6 +131,96 @@ export type Secret = {
           "type": "string"
         }
       ]
+    },
+    {
+      "name": "deleteProfile",
+      "discriminator": [
+        213,
+        96,
+        148,
+        104,
+        75,
+        217,
+        8,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "profile"
+          ]
+        },
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "account",
+                "path": "profile.profile_name",
+                "account": "profile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "profile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "docs": [
+            "Destination account that will receive the withdrawn SOL",
+            "Allows the profile authority to send funds to a different address than their own",
+            "Why `UncheckedAccount`:",
+            "- We're only transferring SOL (no deserialization required)",
+            "- We're not enforcing any constraints on it through Anchor's account validation"
+          ],
+          "writable": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "updateProfileBio",
@@ -217,6 +311,19 @@ export type Secret = {
       ]
     },
     {
+      "name": "deleteProfileEvent",
+      "discriminator": [
+        245,
+        54,
+        90,
+        116,
+        64,
+        137,
+        194,
+        4
+      ]
+    },
+    {
       "name": "updateProfileEvent",
       "discriminator": [
         15,
@@ -263,8 +370,18 @@ export type Secret = {
     },
     {
       "code": 6006,
-      "name": "alreadyUpdated",
-      "msg": "Already updated"
+      "name": "invalidBio",
+      "msg": "Invalid bio"
+    },
+    {
+      "code": 6007,
+      "name": "invalidVaultAccount",
+      "msg": "Invalid vault account"
+    },
+    {
+      "code": 6008,
+      "name": "overflow",
+      "msg": "overflow"
     }
   ],
   "types": [
@@ -295,6 +412,26 @@ export type Secret = {
           },
           {
             "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "deleteProfileEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "profileKey",
+            "type": "pubkey"
+          },
+          {
+            "name": "profileName",
+            "type": "string"
+          },
+          {
+            "name": "deletedAt",
             "type": "i64"
           }
         ]
