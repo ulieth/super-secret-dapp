@@ -1,76 +1,104 @@
 import * as anchor from '@coral-xyz/anchor'
 import { Program } from '@coral-xyz/anchor'
-import { Keypair } from '@solana/web3.js'
+import { Keypair, PublicKey } from '@solana/web3.js'
 import { Secret } from '../target/types/secret'
+import IDL from '../target/idl/secret.json'
+import { BankrunProvider } from 'anchor-bankrun'
+import { startAnchor, ProgramTestContext, Clock } from 'solana-bankrun'
+import { SYSTEM_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/native/system'
+import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet'
 
-describe('secret', () => {
-  // Configure the client to use the local cluster.
-  const provider = anchor.AnchorProvider.env()
-  anchor.setProvider(provider)
-  const payer = provider.wallet as anchor.Wallet
+describe('Secret Smart Contract Tests', () => {
+  // Constants for testing
+  const validProfileName = "James";
+  const validBio = "Just a Solana enthusiast looking to connect and vibe on-chain. Let's build!";
+  const validGender = "Man";
+  const validLookingFor = "Women";
+  const validAvatarUri = "ipfs://QmYwAPJzv5CZsnAzt8auVTLcrgETjjBP7HULtkzzPni4AB";
+  const likerFundAmount = 10_000_000_000; // 10 SOL in lamports
 
-  const program = anchor.workspace.Secret as Program<Secret>
+  // Derived addresses
+  let profilePda: PublicKey;
+  let vaultPda: PublicKey;
 
-  const secretKeypair = Keypair.generate()
+  // Contexts
+  let context: ProgramTestContext;
+  let secretProgram: Program<Secret>;
+  let likerProgram: Program<Secret>;
 
-  it('Initialize Secret', async () => {
-    await program.methods
-      .initialize()
-      .accounts({
-        secret: secretKeypair.publicKey,
-        payer: payer.publicKey,
-      })
-      .signers([secretKeypair])
-      .rpc()
+  // Keypairs
+  let authorityKeypair: Keypair;
+  const likerKeypair = Keypair.generate();
 
-    const currentCount = await program.account.secret.fetch(secretKeypair.publicKey)
+  let connection: anchor.web3.Connection;
+  let rentExemptBalance: number;
 
-    expect(currentCount.count).toEqual(0)
-  })
+  beforeAll(async () => {
+    const programId = new PublicKey(IDL.address);
 
-  it('Increment Secret', async () => {
-    await program.methods.increment().accounts({ secret: secretKeypair.publicKey }).rpc()
+    // Get the minimum rent for this account
+    connection = new anchor.web3.Connection("http://localhost:8899", "confirmed");
+    rentExemptBalance = await connection.getMinimumBalanceForRentExemption(0); // 0 bytes for data
+    // Initialize the test context with the secret program and pre-fund the liker account
+    context = await startAnchor(
+      "",
+      [{ name: "secret", programId }], // Load the secret program with its ID,
+      [
+        {
+          address: likerKeypair.publicKey, // Pre-fund the liker account
+          info: {
+            lamports: likerFundAmount,
+            data: Buffer.alloc(0), // Empty data buffer
+            owner: SYSTEM_PROGRAM_ID, // System program as the owner
+            executable: false, // Not an executable account
+          },
+        },
+      ]
+    );
+    // Setup authority
+    const secretProvider = new BankrunProvider(context);
+    anchor.setProvider(secretProvider);
+    secretProgram = new Program(IDL as Secret, secretProvider);
+    authorityKeypair = secretProvider.wallet.payer;
 
-    const currentCount = await program.account.secret.fetch(secretKeypair.publicKey)
+    // Setup liker program
+    const likerProvider = new BankrunProvider(context);
+    likerProvider.wallet = new NodeWallet(likerKeypair);
+    likerProgram = new Program(IDL as Secret, likerProvider);
 
-    expect(currentCount.count).toEqual(1)
-  })
+    // Derive PDAs
+    [profilePda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("profile"),
+        authorityKeypair.publicKey.toBuffer(),
+        Buffer.from(validProfileName),
+      ],
+      secretProgram.programId
+    );
 
-  it('Increment Secret Again', async () => {
-    await program.methods.increment().accounts({ secret: secretKeypair.publicKey }).rpc()
+    [vaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), profilePda.toBuffer()],
+      secretProgram.programId
+    );
+  });
 
-    const currentCount = await program.account.secret.fetch(secretKeypair.publicKey)
+  it("create profile account", async () => {
 
-    expect(currentCount.count).toEqual(2)
-  })
+  });
 
-  it('Decrement Secret', async () => {
-    await program.methods.decrement().accounts({ secret: secretKeypair.publicKey }).rpc()
 
-    const currentCount = await program.account.secret.fetch(secretKeypair.publicKey)
 
-    expect(currentCount.count).toEqual(1)
-  })
 
-  it('Set secret value', async () => {
-    await program.methods.set(42).accounts({ secret: secretKeypair.publicKey }).rpc()
 
-    const currentCount = await program.account.secret.fetch(secretKeypair.publicKey)
 
-    expect(currentCount.count).toEqual(42)
-  })
 
-  it('Set close the secret account', async () => {
-    await program.methods
-      .close()
-      .accounts({
-        payer: payer.publicKey,
-        secret: secretKeypair.publicKey,
-      })
-      .rpc()
 
-    // The account should no longer exist, returning null.
-    const userAccount = await program.account.secret.fetchNullable(secretKeypair.publicKey)
-    expect(userAccount).toBeNull()
-  })
+
+
+
+
+
+
+
+
 })
