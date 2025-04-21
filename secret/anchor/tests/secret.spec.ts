@@ -16,6 +16,11 @@ describe('Secret Smart Contract Tests', () => {
   const validLookingFor = "Women";
   const validAvatarUri = "ipfs://QmYwAPJzv5CZsnAzt8auVTLcrgETjjBP7HULtkzzPni4AB";
   const likerFundAmount = 10_000_000_000; // 10 SOL in lamports
+  const profileCreatedAt = Math.floor(Date.now() / 1000); // now
+  const profileUpdatedAt = profileCreatedAt + 60 * 60 * 1; // 1 hour later
+  const likeCreatedAt = profileCreatedAt + 60 * 60 * 2; // 2 hours later
+  const likeWithdrawnAt = profileCreatedAt + 60 * 60 * 3; // 3 hours later
+  const profileDeletedAt = profileCreatedAt + 60 * 60 * 4; // 4 hours later
 
   // Derived addresses
   let profilePda: PublicKey;
@@ -23,7 +28,7 @@ describe('Secret Smart Contract Tests', () => {
 
   // Contexts
   let context: ProgramTestContext;
-  let secretProgram: Program<Secret>;
+  let profileProgram: Program<Secret>;
   let likerProgram: Program<Secret>;
 
   // Keypairs
@@ -56,10 +61,10 @@ describe('Secret Smart Contract Tests', () => {
       ]
     );
     // Setup authority
-    const secretProvider = new BankrunProvider(context);
-    anchor.setProvider(secretProvider);
-    secretProgram = new Program(IDL as Secret, secretProvider);
-    authorityKeypair = secretProvider.wallet.payer;
+    const profileProvider = new BankrunProvider(context);
+    anchor.setProvider(profileProvider);
+    profileProgram = new Program(IDL as Secret, profileProvider);
+    authorityKeypair = profileProvider.wallet.payer;
 
     // Setup liker program
     const likerProvider = new BankrunProvider(context);
@@ -73,32 +78,59 @@ describe('Secret Smart Contract Tests', () => {
         authorityKeypair.publicKey.toBuffer(),
         Buffer.from(validProfileName),
       ],
-      secretProgram.programId
+      profileProgram.programId
     );
 
     [vaultPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("vault"), profilePda.toBuffer()],
-      secretProgram.programId
+      profileProgram.programId
     );
   });
 
   it("create profile account", async () => {
+    try {
+      // Set the clock to simulate blockchain time
+      const currentClock = await context.banksClient.getClock();
+      context.setClock(
+        new Clock(
+          currentClock.slot,
+          currentClock.epochStartTimestamp,
+          currentClock.epoch,
+          currentClock.leaderScheduleEpoch,
+          BigInt(profileCreatedAt)
+        )
+      );
 
+      const tx = await profileProgram.methods
+        .createProfile(validProfileName, validBio, validGender, validLookingFor, validAvatarUri)
+        .accounts({
+          authority: authorityKeypair.publicKey,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      console.log("Create profile account transaction signature:", tx);
+
+      // Fetch the created profile account
+      const profile = await profileProgram.account.profile.fetch(profilePda);
+
+      // Assertions
+      expect(profile.authority.toString()).toBe(
+        authorityKeypair.publicKey.toString()
+      );
+      expect(profile.profileName).toBe(validProfileName);
+      expect(profile.bio).toBe(validBio);
+      expect(profile.likesInLamports.toNumber()).toBe(0);
+      expect(profile.likeCount.toNumber()).toBe(0);
+      expect(profile.createdAt.toNumber()).toBe(profileCreatedAt);
+      expect(profile.updatedAt.toNumber()).toBe(profileCreatedAt);
+      expect(profile.deletedAt).toBe(null);
+      expect(profile.withdrawnAt).toBe(null);
+
+      console.log("Profile account:", JSON.stringify(profile, null, 2));
+    } catch (error: any) {
+      const message = `Create profile account failed:", ${error}`;
+      console.error(message);
+      throw new Error(message);
+    }
   });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 })
