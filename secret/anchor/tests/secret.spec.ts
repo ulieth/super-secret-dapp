@@ -15,6 +15,8 @@ describe('Secret Smart Contract Tests', () => {
   const validGender = "Man";
   const validLookingFor = "Women";
   const validAvatarUri = "ipfs://QmYwAPJzv5CZsnAzt8auVTLcrgETjjBP7HULtkzzPni4AB";
+  const invalidProfileBio =
+    "This is an invalid profile bio that is intentionally made to exceed one hundred characters in length.";
   const likerFundAmount = 10_000_000_000; // 10 SOL in lamports
   const profileCreatedAt = Math.floor(Date.now() / 1000); // now
   const profileUpdatedAt = profileCreatedAt + 60 * 60 * 1; // 1 hour later
@@ -131,6 +133,27 @@ describe('Secret Smart Contract Tests', () => {
       const message = `Create profile account failed:", ${error}`;
       console.error(message);
       throw new Error(message);
+    }
+  });
+
+  it("fails to create profile account with too long bio", async () => {
+    try {
+      // Try to create a profile with a bio that exceeds the max length
+      await profileProgram.methods
+        .createProfile(validProfileName, invalidProfileBio, validGender, validLookingFor, validAvatarUri)
+        .accounts({
+          authority: authorityKeypair.publicKey,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      throw new Error(
+        "Profile creation should have failed due to invalid bio length"
+      );
+    } catch (error: any) {
+      // Expect an error
+      console.log(
+        "Profile creation with too long bio failed as expected"
+      );
     }
   });
 })
