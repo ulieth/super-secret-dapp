@@ -156,4 +156,55 @@ describe('Secret Smart Contract Tests', () => {
       );
     }
   });
+
+  it("updates profile bio", async () => {
+    try {
+      const newBio = "Updated profile bio";
+
+      // Fetch the profile account to ensure it exists
+      const profile = await profileProgram.account.profile.fetch(profilePda);
+      expect(profile).toBeDefined();
+
+      // Set the clock to simulate blockchain time
+      const currentClock = await context.banksClient.getClock();
+      context.setClock(
+        new Clock(
+          currentClock.slot,
+          currentClock.epochStartTimestamp,
+          currentClock.epoch,
+          currentClock.leaderScheduleEpoch,
+          BigInt(profileUpdatedAt)
+        )
+      );
+
+      const tx = await profileProgram.methods
+        .updateProfileBio(newBio)
+        .accounts({
+          authority: authorityKeypair.publicKey,
+          profile: profilePda,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      console.log("Update profile account transaction signature:", tx);
+
+      // Fetch the updated profile account
+      const updatedProfile = await profileProgram.account.profile.fetch(
+        profilePda
+      );
+
+      // Assertions
+      expect(updatedProfile.bio).toBe(newBio);
+      expect(updatedProfile.updatedAt.toNumber()).toBe(profileUpdatedAt); // Should be updated
+      expect(updatedProfile.createdAt.toNumber()).toBe(profileCreatedAt); // Should remain the same
+
+      console.log(
+        "Updated profile account:",
+        JSON.stringify(updatedProfile, null, 2)
+      );
+    } catch (error: any) {
+      const message = `Update pofile account failed:", ${error}`;
+      console.error(message);
+      throw new Error(message);
+    }
+  });
 })
