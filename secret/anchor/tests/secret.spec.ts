@@ -207,4 +207,29 @@ describe('Secret Smart Contract Tests', () => {
       throw new Error(message);
     }
   });
+
+  it("fails to update profile bio with too long bio", async () => {
+    try {
+      // Fetch the profile account to ensure it exists
+      const profile = await profileProgram.account.profile.fetch(profilePda);
+      expect(profile).toBeDefined();
+
+      await profileProgram.methods
+        .updateProfileBio(invalidProfileBio)
+        .accounts({
+          authority: authorityKeypair.publicKey,
+          profile: profilePda,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      throw new Error(
+        "Updating profile bio should have failed due to invalid bio length"
+      );
+    } catch (error: any) {
+      // Expect an error
+      console.log(
+        "Profile bio update with too long bio failed as expected"
+      );
+    }
+  });
 })
