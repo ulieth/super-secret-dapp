@@ -345,4 +345,69 @@ describe('Secret Smart Contract Tests', () => {
       console.log("Sending like in SOL failed as expected");
     }
   });
+
+  it("pauses and unpauses profile", async () => {
+    try {
+      // First pause donations
+      await profileProgram.methods
+        .pauseProfile(true)
+        .accounts({
+          authority: authorityKeypair.publicKey,
+          profile: profilePda,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      // Verify profile is paused
+      let profile = await profileProgram.account.profile.fetch(profilePda);
+      expect(profile.paused).toBe(true);
+
+      // Try to send a like while paused - should fail
+      try {
+        await likerProgram.methods
+          .giveLike(new anchor.BN(100_000))
+          .accounts({
+            liker: likerKeypair.publicKey,
+            profile: profilePda,
+          })
+          .signers([likerKeypair])
+          .rpc({ commitment: "confirmed" });
+
+        throw new Error("Sending like should have failed when profile is paused");
+      } catch (error: any) {
+        expect(error.message).toContain("ProfilePaused");
+      }
+
+      // Now unpause profile
+      await profileProgram.methods
+        .pauseProfile(false)
+        .accounts({
+          authority: authorityKeypair.publicKey,
+          profile: profilePda,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      // Verify profile is unpaused
+      profile = await profileProgram.account.profile.fetch(profilePda);
+      expect(profile.paused).toBe(false);
+
+      // Try to send like after unpausing - should succeed
+      await likerProgram.methods
+        .giveLike(new anchor.BN(100_000))
+        .accounts({
+          liker: likerKeypair.publicKey,
+          profile: profilePda,
+        })
+        .signers([likerKeypair])
+        .rpc({ commitment: "confirmed" });
+
+      // Verify that sending like succeeded
+      profile = await profileProgram.account.profile.fetch(profilePda);
+      expect(profile.likesInLamports.toNumber()).toBeGreaterThan(0);
+    } catch (error: any) {
+      const message = `Pause/unpause test failed: ${error}`;
+      console.error(message);
+      throw new Error(message);
+    }
+  });
+
 })
