@@ -17,12 +17,17 @@ describe('Secret Smart Contract Tests', () => {
   const validAvatarUri = "ipfs://QmYwAPJzv5CZsnAzt8auVTLcrgETjjBP7HULtkzzPni4AB";
   const invalidProfileBio =
     "This is an invalid profile bio that is intentionally made to exceed one hundred characters in length.";
-  const likerFundAmount = 10_000_000_000; // 10 SOL in lamports
   const profileCreatedAt = Math.floor(Date.now() / 1000); // now
   const profileUpdatedAt = profileCreatedAt + 60 * 60 * 1; // 1 hour later
   const likeCreatedAt = profileCreatedAt + 60 * 60 * 2; // 2 hours later
   const likeWithdrawnAt = profileCreatedAt + 60 * 60 * 3; // 3 hours later
   const profileDeletedAt = profileCreatedAt + 60 * 60 * 4; // 4 hours later
+  const likerFundAmount = 10_000_000_000; // 10 SOL in lamports
+  const validLikeAmount = new anchor.BN(1_000_000_000); // 1 SOL in lamports
+  const invalidLikeAmount = new anchor.BN(20_000_000_000); // 11 SOL in lamports
+  const validWithdrawAmount = new anchor.BN(100_000_000); // 0.1 SOL in lamports
+  const inValidWithdrawAmount = validLikeAmount; // No longer rent-exempt
+
 
   // Derived addresses
   let profilePda: PublicKey;
@@ -230,6 +235,91 @@ describe('Secret Smart Contract Tests', () => {
       console.log(
         "Profile bio update with too long bio failed as expected"
       );
+    }
+  });
+
+  it("sends like in the form of SOL to profile", async () => {
+    try {
+      // Set the clock to simulate blockchain time
+      const currentClock = await context.banksClient.getClock();
+      context.setClock(
+        new Clock(
+          currentClock.slot,
+          currentClock.epochStartTimestamp,
+          currentClock.epoch,
+          currentClock.leaderScheduleEpoch,
+          BigInt(likeCreatedAt)
+        )
+      );
+
+      // Fetch the profile account to ensure it exists
+      const profile = await profileProgram.account.profile.fetch(profilePda);
+      expect(profile).toBeDefined();
+
+      const tx = await profileProgram.methods
+        .giveLike(validLikeAmount)
+        .accounts({
+          liker: likerKeypair.publicKey,
+          profile: profilePda,
+        })
+        .signers([likerKeypair])
+        .rpc({ commitment: "confirmed" });
+
+      console.log("Like transaction signature:", tx);
+
+      // Derive like PDA (we need the current like count)
+      const likeCount = profile.likeCount.toNumber();
+      const [likePda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("like"),
+          likerKeypair.publicKey.toBuffer(),
+          profilePda.toBuffer(),
+          new anchor.BN(likeCount).toArrayLike(Buffer, "le", 8),
+        ],
+        likerProgram.programId
+      );
+
+      // Fetch the updated profile and like accounts
+      const updatedProfile = await likerProgram.account.profile.fetch(
+        profilePda
+      );
+      const likeRecord = await likerProgram.account.like.fetch(
+        likePda
+      );
+
+      // Assertions for profile
+      expect(updatedProfile.likesInLamports.toString()).toBe(
+        validLikeAmount.toString()
+      );
+      expect(updatedProfile.likeCount.toNumber()).toBe(likeCount + 1);
+
+      // Assertions for lke record
+      expect(likeRecord.likerKey.toString()).toBe(
+        likerKeypair.publicKey.toString()
+      );
+      expect(likeRecord.profileKey.toString()).toBe(profilePda.toString());
+      expect(likeRecord.profileName).toBe(validProfileName);
+      expect(likeRecord.likesInLamports.toString()).toBe(
+        validLikeAmount.toString()
+      );
+      expect(likeRecord.createdAt.toNumber()).toBe(likeCreatedAt);
+
+      // Assertions for vault account
+      const vaultAccount = await context.banksClient.getAccount(vaultPda);
+      const vaultBalance = vaultAccount?.lamports;
+      const expectedVaultBalance = validLikeAmount
+        .add(new anchor.BN(rentExemptBalance))
+        .toNumber();
+      expect(vaultAccount?.owner.toString()).toBe(
+        profileProgram.programId.toString()
+      );
+      expect(vaultBalance).toBe(expectedVaultBalance);
+
+      console.log("Like record:", JSON.stringify(likeRecord, null, 2));
+    } catch (error: any) {
+      const message = `Like failed: ${error}`;
+      console.error(message);
+      throw new Error(message);
     }
   });
 })
