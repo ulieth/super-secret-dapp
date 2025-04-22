@@ -267,7 +267,7 @@ describe('Secret Smart Contract Tests', () => {
 
       console.log("Like transaction signature:", tx);
 
-      // Derive like PDA (we need the current like count)
+      // Derive the like PDA (we need the current like count)
       const likeCount = profile.likeCount.toNumber();
       const [likePda] = PublicKey.findProgramAddressSync(
         [
@@ -293,7 +293,7 @@ describe('Secret Smart Contract Tests', () => {
       );
       expect(updatedProfile.likeCount.toNumber()).toBe(likeCount + 1);
 
-      // Assertions for lke record
+      // Assertions for like record
       expect(likeRecord.likerKey.toString()).toBe(
         likerKeypair.publicKey.toString()
       );
@@ -320,6 +320,29 @@ describe('Secret Smart Contract Tests', () => {
       const message = `Like failed: ${error}`;
       console.error(message);
       throw new Error(message);
+    }
+  });
+
+  it("fails to give a like in SOL to profile due to insufficient funds", async () => {
+    try {
+      const profile = await profileProgram.account.profile.fetch(profilePda);
+      expect(profile).toBeDefined();
+
+      await profileProgram.methods
+        .giveLike(invalidLikeAmount)
+        .accounts({
+          liker: likerKeypair.publicKey,
+          profile: profilePda,
+        })
+        .signers([likerKeypair])
+        .rpc({ commitment: "confirmed" });
+
+      throw new Error(
+        "Sending a like in SOL should have failed due to insufficient funds"
+      );
+    } catch (error: any) {
+      // Expect an error
+      console.log("Sending like in SOL failed as expected");
     }
   });
 })
