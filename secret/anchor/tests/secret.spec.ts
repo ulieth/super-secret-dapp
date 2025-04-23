@@ -496,4 +496,54 @@ describe('Secret Smart Contract Tests', () => {
     }
   });
 
+  it("fails to withdraw more than available or below rent-exempt", async () => {
+    try {
+      const profile = await profileProgram.account.profile.fetch(profilePda);
+
+      // Try to withdraw more than what's available
+      const tooMuchAmount = new anchor.BN(
+        profile.likesInLamports.toNumber() * 2
+      );
+
+      await profileProgram.methods
+        .withdrawLikes(tooMuchAmount)
+        .accounts({
+          profile: profilePda,
+          recipient: Keypair.generate().publicKey,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      throw new Error(
+        "Withdrawal should have failed due to insufficient funds"
+      );
+    } catch (error: any) {
+      // We expect an error with InsufficientFunds
+      expect(error.message).toContain("InsufficientFunds");
+      console.log("Withdrawal with insufficient funds failed as expected");
+    }
+
+    try {
+      // Try to withdraw amount that would leave vault below rent-exempt
+      // This requires calculating exactly how much would leave exactly the min rent
+      const vaultAccount = await context.banksClient.getAccount(vaultPda);
+      const availableToWithdraw =
+        (vaultAccount?.lamports || 0) - rentExemptBalance;
+      const withdrawTooMuch = new anchor.BN(availableToWithdraw + 1); // Just 1 lamport too much
+
+      await profileProgram.methods
+        .withdrawLikes(withdrawTooMuch)
+        .accounts({
+          profile: profilePda,
+          recipient: Keypair.generate().publicKey,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      throw new Error("Withdrawal should have failed due to rent exemption");
+    } catch (error: any) {
+      // We expect an error with InsufficientFundsForRent
+      expect(error.message).toContain("InsufficientFundsForRent");
+      console.log("Withdrawal below rent-exempt failed as expected");
+    }
+  });
+
 })
