@@ -410,4 +410,90 @@ describe('Secret Smart Contract Tests', () => {
     }
   });
 
+  it("withdraws likes from profile vault", async () => {
+    try {
+      // Set the clock to simulate blockchain time
+      const currentClock = await context.banksClient.getClock();
+      context.setClock(
+        new Clock(
+          currentClock.slot,
+          currentClock.epochStartTimestamp,
+          currentClock.epoch,
+          currentClock.leaderScheduleEpoch,
+          BigInt(likeWithdrawnAt)
+        )
+      );
+      // Get the current state
+      const profileBefore = await profileProgram.account.profile.fetch(
+        profilePda
+      );
+      const vaultAccountBefore = await context.banksClient.getAccount(vaultPda);
+      const vaultBalanceBefore = vaultAccountBefore?.lamports || 0;
+
+      console.log("Vault balance before withdrawal:", vaultBalanceBefore);
+      console.log(
+        "Likes in lamports:",
+        profileBefore.likesInLamports.toString()
+      );
+      console.log("Rent exempt minimum:", rentExemptBalance);
+
+      const recipientKeypair = Keypair.generate();
+
+      // Verify vault ownership
+      expect(vaultAccountBefore?.owner.toString()).toBe(
+        profileProgram.programId.toString()
+      );
+
+      const tx = await profileProgram.methods
+        .withdrawLikes(validWithdrawAmount)
+        .accounts({
+          profile: profilePda,
+          recipient: recipientKeypair.publicKey,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      console.log("Withdrawal transaction signature:", tx);
+
+      // Fetch the updated profile account
+      const updatedProfile = await profileProgram.account.profile.fetch(
+        profilePda
+      );
+
+      // Check vault balance after withdrawal
+      const vaultAccountAfter = await context.banksClient.getAccount(vaultPda);
+      const vaultBalanceAfter = vaultAccountAfter?.lamports || 0;
+
+      console.log("Vault balance after withdrawal:", vaultBalanceAfter);
+
+      // Check recipient balance
+      const recipientAccount = await context.banksClient.getAccount(
+        recipientKeypair.publicKey
+      );
+
+      // Assertions - use difference in balances instead of absolute values
+      expect(vaultBalanceBefore - vaultBalanceAfter).toBe(
+        validWithdrawAmount.toNumber()
+      );
+      expect(updatedProfile.likesInLamports.toString()).toBe(
+        profileBefore.likesInLamports.sub(validWithdrawAmount).toString()
+      );
+      expect(updatedProfile.withdrawnAt?.toNumber()).toBe(likeWithdrawnAt);
+      expect(recipientAccount?.lamports.toString()).toBe(
+        validWithdrawAmount.toString()
+      );
+
+      console.log(
+        "Updated profile account after withdrawal:",
+        JSON.stringify(updatedProfile, null, 2)
+      );
+    } catch (error: any) {
+      if (error instanceof anchor.AnchorError) {
+        console.error("Anchor error logs:", error.logs);
+      }
+      const message = `Sending like failed: ${error}`;
+      console.error(message);
+      throw new Error(message);
+    }
+  });
+
 })
