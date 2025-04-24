@@ -116,7 +116,7 @@ pub mod secret {
         let current_time = Clock::get()?.unix_timestamp;
 
         let (expected_vault, _vault_bump) =
-            Pubkey::find_program_address(&[b"vault", profile.key().as_ref(), profile.profile_name.as_bytes()], ctx.program_id);
+            Pubkey::find_program_address(&[b"vault", profile.key().as_ref()], ctx.program_id);
         require_keys_eq!(
             vault.key(),
             expected_vault,
