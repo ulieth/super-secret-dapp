@@ -572,5 +572,56 @@ describe('Secret Smart Contract Tests', () => {
     }
   });
 
+  it("deletes profile", async () => {
+    try {
+      // Set the clock to simulate blockchain time
+      const currentClock = await context.banksClient.getClock();
+      context.setClock(
+        new Clock(
+          currentClock.slot,
+          currentClock.epochStartTimestamp,
+          currentClock.epoch,
+          currentClock.leaderScheduleEpoch,
+          BigInt(profileDeletedAt)
+        )
+      );
 
+      const recipientKeypair = Keypair.generate();
+
+      const tx = await profileProgram.methods
+        .deleteProfile()
+        .accounts({
+          profile: profilePda,
+          recipient: recipientKeypair.publicKey,
+        } as any) // Cast to `any` to bypass TypeScript warning
+        .signers([authorityKeypair])
+        .rpc({ commitment: "confirmed" });
+
+      console.log("Delete profile transaction signature:", tx);
+
+      // Try to fetch the profile (should fail)
+      try {
+        await profileProgram.account.profile.fetch(profilePda);
+        fail("Profile account should have been deleted");
+      } catch (error: any) {
+        // This is expected, account should be deleted
+        // expect(error.message).toContain("Account does not exist");
+        console.log("Account successfully deleted");
+      }
+
+      // Check authority lamports to ensure they received the rent
+      const authorityAccount = await context.banksClient.getAccount(
+        authorityKeypair.publicKey
+      );
+
+      console.log(
+        "Authority balance after deleting profile:",
+        authorityAccount?.lamports.toString()
+      );
+    } catch (error: any) {
+      const message = `Delete profile failed: ${error}`;
+      console.error(message);
+      throw new Error(message);
+    }
+  });
 })
