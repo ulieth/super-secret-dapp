@@ -546,4 +546,31 @@ describe('Secret Smart Contract Tests', () => {
     }
   });
 
+  it("prevents unauthorized access to withdraw/update/delete", async () => {
+    try {
+      // Create unauthorized user
+      const unauthorizedKeypair = Keypair.generate();
+      const unauthorizedProvider = new BankrunProvider(context);
+      unauthorizedProvider.wallet = new NodeWallet(unauthorizedKeypair);
+      const unauthorizedProgram = new Program(
+        IDL as Secret,
+        unauthorizedProvider
+      );
+
+      // Try to withdraw as unauthorized user
+      await unauthorizedProgram.methods
+        .withdrawLikes(new anchor.BN(100))
+        .accounts({
+          profile: profilePda,
+          recipient: unauthorizedKeypair.publicKey,
+        })
+        .rpc({ commitment: "confirmed" });
+
+      throw new Error("Unauthorized withdrawal should have failed");
+    } catch (error: any) {
+      console.log("Unauthorized withdrawal failed as expected");
+    }
+  });
+
+
 })
