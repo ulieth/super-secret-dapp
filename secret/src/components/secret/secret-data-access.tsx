@@ -1,7 +1,7 @@
 'use client'
 
 import { getSecretProgram, getSecretProgramId } from '@project/anchor'
-import { useConnection } from '@solana/wallet-adapter-react'
+import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { Cluster, Keypair, PublicKey } from '@solana/web3.js'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
@@ -10,6 +10,18 @@ import { useCluster } from '../cluster/cluster-data-access'
 import { useAnchorProvider } from '../solana/solana-provider'
 import { useTransactionToast } from '../ui/ui-layout'
 
+export interface CreateProfileArgs {
+  profile_name: string,
+  bio: string,
+  gender: string,
+  looking_for: string,
+  avatar_uri: string,
+}
+
+export interface UpdateProfileBioArgs {
+  bio: string
+}
+
 export function useSecretProgram() {
   const { connection } = useConnection()
   const { cluster } = useCluster()
@@ -17,10 +29,11 @@ export function useSecretProgram() {
   const provider = useAnchorProvider()
   const programId = useMemo(() => getSecretProgramId(cluster.network as Cluster), [cluster])
   const program = useMemo(() => getSecretProgram(provider, programId), [provider, programId])
+  const { publicKey } = useWallet();
 
   const accounts = useQuery({
-    queryKey: ['secret', 'all', { cluster }],
-    queryFn: () => program.account.secret.all(),
+    queryKey: ['profile', 'all', { cluster }],
+    queryFn: () => program.account.profile.all(),
   })
 
   const getProgramAccount = useQuery({
@@ -28,15 +41,36 @@ export function useSecretProgram() {
     queryFn: () => connection.getParsedAccountInfo(programId),
   })
 
-  const initialize = useMutation({
-    mutationKey: ['secret', 'initialize', { cluster }],
-    mutationFn: (keypair: Keypair) =>
-      program.methods.initialize().accounts({ secret: keypair.publicKey }).signers([keypair]).rpc(),
+  const createProfile = useMutation<string, Error, CreateProfileArgs>({
+    mutationKey: ['profile', 'create', { cluster }],
+    mutationFn: async ({profile_name, bio, gender, looking_for, avatar_uri}) => {
+      if (!publicKey) throw new Error("Wallet not connected")
+      return await program.methods
+        .createProfile(profile_name, bio, gender, looking_for, avatar_uri)
+        .accounts({ authority: publicKey })
+        .rpc();
+    },
     onSuccess: (signature) => {
       transactionToast(signature)
       return accounts.refetch()
     },
-    onError: () => toast.error('Failed to initialize account'),
+    onError: () => toast.error('Failed to create profile account'),
+  })
+
+  const updateProfileBio = useMutation<string, Error, UpdateProfileBioArgs>({
+    mutationKey: ['profile', 'update', { cluster }],
+    mutationFn: async ({bio}) => {
+      if (!publicKey) throw new Error("Wallet not connected")
+      return await program.methods
+        .updateProfileBio(bio)
+        .accounts({ authority: publicKey })
+        .rpc();
+    },
+    onSuccess: (signature) => {
+      transactionToast(signature)
+      return accounts.refetch()
+    },
+    onError: () => toast.error('Failed to update profile bio'),
   })
 
   return {
@@ -44,7 +78,7 @@ export function useSecretProgram() {
     programId,
     accounts,
     getProgramAccount,
-    initialize,
+    createProfile,
   }
 }
 
@@ -54,51 +88,8 @@ export function useSecretProgramAccount({ account }: { account: PublicKey }) {
   const { program, accounts } = useSecretProgram()
 
   const accountQuery = useQuery({
-    queryKey: ['secret', 'fetch', { cluster, account }],
-    queryFn: () => program.account.secret.fetch(account),
+    queryKey: ['profile', 'fetch', { cluster, account }],
+    queryFn: () => program.account.profile.fetch(account),
   })
 
-  const closeMutation = useMutation({
-    mutationKey: ['secret', 'close', { cluster, account }],
-    mutationFn: () => program.methods.close().accounts({ secret: account }).rpc(),
-    onSuccess: (tx) => {
-      transactionToast(tx)
-      return accounts.refetch()
-    },
-  })
-
-  const decrementMutation = useMutation({
-    mutationKey: ['secret', 'decrement', { cluster, account }],
-    mutationFn: () => program.methods.decrement().accounts({ secret: account }).rpc(),
-    onSuccess: (tx) => {
-      transactionToast(tx)
-      return accountQuery.refetch()
-    },
-  })
-
-  const incrementMutation = useMutation({
-    mutationKey: ['secret', 'increment', { cluster, account }],
-    mutationFn: () => program.methods.increment().accounts({ secret: account }).rpc(),
-    onSuccess: (tx) => {
-      transactionToast(tx)
-      return accountQuery.refetch()
-    },
-  })
-
-  const setMutation = useMutation({
-    mutationKey: ['secret', 'set', { cluster, account }],
-    mutationFn: (value: number) => program.methods.set(value).accounts({ secret: account }).rpc(),
-    onSuccess: (tx) => {
-      transactionToast(tx)
-      return accountQuery.refetch()
-    },
-  })
-
-  return {
-    accountQuery,
-    closeMutation,
-    decrementMutation,
-    incrementMutation,
-    setMutation,
-  }
 }
