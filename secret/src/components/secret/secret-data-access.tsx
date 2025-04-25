@@ -3,12 +3,13 @@
 import { getSecretProgram, getSecretProgramId } from '@project/anchor'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { Cluster, Keypair, PublicKey } from '@solana/web3.js'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { useCluster } from '../cluster/cluster-data-access'
 import { useAnchorProvider } from '../solana/solana-provider'
 import { useTransactionToast } from '../ui/ui-layout'
+import { BN } from '@coral-xyz/anchor'
 
 export interface CreateProfileArgs {
   profile_name: string,
@@ -19,7 +20,13 @@ export interface CreateProfileArgs {
 }
 
 export interface UpdateProfileBioArgs {
-  bio: string
+  bio: string,
+  profile: string,
+}
+
+export interface GiveLikeArgs {
+  profile: string,
+  amount: number,
 }
 
 export function useSecretProgram() {
@@ -30,6 +37,7 @@ export function useSecretProgram() {
   const programId = useMemo(() => getSecretProgramId(cluster.network as Cluster), [cluster])
   const program = useMemo(() => getSecretProgram(provider, programId), [provider, programId])
   const { publicKey } = useWallet();
+  const queryClient = useQueryClient();
 
   const accounts = useQuery({
     queryKey: ['profile', 'all', { cluster }],
@@ -42,36 +50,80 @@ export function useSecretProgram() {
   })
 
   const createProfile = useMutation<string, Error, CreateProfileArgs>({
-    mutationKey: ['profile', 'create', { cluster }],
+    mutationKey: ["profile", "create", { cluster }],
     mutationFn: async ({profile_name, bio, gender, looking_for, avatar_uri}) => {
       if (!publicKey) throw new Error("Wallet not connected")
-      return await program.methods
+      try {
+        return await program.methods
         .createProfile(profile_name, bio, gender, looking_for, avatar_uri)
         .accounts({ authority: publicKey })
         .rpc();
+      } catch (error) {
+        console.log("Error creating profile account:", error);
+        throw error;
+      }
     },
     onSuccess: (signature) => {
-      transactionToast(signature)
-      return accounts.refetch()
+      transactionToast(signature);
+      toast.success("Profile created successfully");
+      return queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
-    onError: () => toast.error('Failed to create profile account'),
-  })
+    onError: (error) => toast.error(`Failed to create profile: ${error}`),
+  });
 
   const updateProfileBio = useMutation<string, Error, UpdateProfileBioArgs>({
-    mutationKey: ['profile', 'update', { cluster }],
-    mutationFn: async ({bio}) => {
+    mutationKey: ["profile", "update", { cluster }],
+    mutationFn: async ({bio, profile}) => {
       if (!publicKey) throw new Error("Wallet not connected")
-      return await program.methods
+      try {
+        return await program.methods
         .updateProfileBio(bio)
-        .accounts({ authority: publicKey })
+        .accounts({
+          authority: publicKey,
+          profile: new PublicKey(profile)
+         })
         .rpc();
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        throw error;
+      }
     },
     onSuccess: (signature) => {
-      transactionToast(signature)
-      return accounts.refetch()
+      transactionToast(signature);
+      toast.success("Profile updated successfully!");
+      return queryClient.invalidateQueries({ queryKey: ["profile"] });
+
     },
-    onError: () => toast.error('Failed to update profile bio'),
-  })
+    onError: (error) => toast.error(`Failed to update profile: ${error}`),
+  });
+
+  const giveLike = useMutation<string, Error, GiveLikeArgs>({
+    mutationKey: ["giveLike", "create", {cluster}],
+    mutationFn: async ({profile, amount}) => {
+      if (!publicKey) throw new Error("Wallet not connected")
+      try {
+        return await program.methods
+        .giveLike(new BN(amount))
+        .accounts({
+          liker: publicKey,
+          profile: new PublicKey(profile)
+        })
+        .rpc();
+      } catch (error) {
+        console.error("Error sending like to profile:", error);
+        throw error;
+      }
+    },
+    onSuccess: (signature) => {
+      transactionToast(signature);
+      toast.success("Like sent successfully!");
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["profile"] }),
+        queryClient.invalidateQueries({ queryKey: ["giveLike"] }),
+      ]);
+    },
+    onError: (error) => toast.error(`Failed to give like: ${error}`),
+  });
 
   return {
     program,
