@@ -34,6 +34,12 @@ export interface PauseProfileArgs {
   paused: boolean;
 }
 
+export interface WithdrawLikesArgs {
+  profile: string;
+  recipient: string;
+  amount: number;
+}
+
 export function useSecretProgram() {
   const { connection } = useConnection()
   const { cluster } = useCluster()
@@ -155,6 +161,31 @@ export function useSecretProgram() {
     },
     onError: (error) => toast.error(`Failed to update pause status: ${error}`),
   });
+
+  const withdrawLikes = useMutation<string, Error, WithdrawLikesArgs>({
+    mutationKey: ["profile", "withdraw", { cluster }],
+    mutationFn: async ({ profile, recipient, amount }) => {
+      try {
+        return program.methods
+          .withdrawLikes(new BN(amount))
+          .accounts({
+            profile: new PublicKey(profile),
+            recipient: new PublicKey(recipient),
+          })
+          .rpc();
+      } catch (error) {
+        console.error("Error withdrawing likes:", error);
+        throw error;
+      }
+    },
+    onSuccess: (signature) => {
+      transactionToast(signature);
+      toast.success("Likes withdrawn successfully!");
+      return queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: (error) => toast.error(`Failed to withdraw likes: ${error}`),
+  });
+
 
 
   return {
