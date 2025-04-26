@@ -29,6 +29,11 @@ export interface GiveLikeArgs {
   amount: number,
 }
 
+export interface PauseProfileArgs {
+  profile: string;
+  paused: boolean;
+}
+
 export function useSecretProgram() {
   const { connection } = useConnection()
   const { cluster } = useCluster()
@@ -124,6 +129,33 @@ export function useSecretProgram() {
     },
     onError: (error) => toast.error(`Failed to give like: ${error}`),
   });
+
+  const pauseProfile = useMutation<string, Error, PauseProfileArgs>({
+    mutationKey: ["profile", "pause", { cluster }],
+    mutationFn: async ({ profile, paused }) => {
+      try {
+        return program.methods
+          .pauseProfile(paused)
+          .accounts({
+            authority: publicKey,
+            profile: new PublicKey(profile),
+          })
+          .rpc();
+      } catch (error) {
+        console.error("Error pausing profile:", error);
+        throw error;
+      }
+    },
+    onSuccess: (signature, { paused }) => {
+      transactionToast(signature);
+      toast.success(
+        `Profile ${paused ? "paused" : "unpaused"} successfully!`
+      );
+      return queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: (error) => toast.error(`Failed to update pause status: ${error}`),
+  });
+
 
   return {
     program,
