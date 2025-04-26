@@ -40,6 +40,11 @@ export interface WithdrawLikesArgs {
   amount: number;
 }
 
+export interface DeleteProfileArgs {
+  profile: string,
+  recipient: string,
+}
+
 export function useSecretProgram() {
   const { connection } = useConnection()
   const { cluster } = useCluster()
@@ -184,6 +189,31 @@ export function useSecretProgram() {
       return queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (error) => toast.error(`Failed to withdraw likes: ${error}`),
+  });
+
+  const deleteProfile = useMutation<string, Error, DeleteProfileArgs>({
+    mutationKey: ["profile", "delete", {cluster}],
+    mutationFn: async ({profile, recipient}) => {
+      if (!publicKey) throw new Error("Wallet not connected");
+      try {
+        return program.methods
+          .deleteProfile()
+          .accounts({
+            profile: new PublicKey(profile),
+            recipient: new PublicKey(recipient)
+          } as any) // Cast to `any` to bypass TypeScript warning
+          .rpc();
+      } catch (error) {
+        console.error("Error deleting profile:", error);
+        throw error;
+      }
+    },
+    onSuccess: (signature) => {
+      transactionToast(signature);
+      toast.success("Profile deleted successfully!");
+      return queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: (error) => toast.error(`Failed to delete profile: ${error}`),
   });
 
 
