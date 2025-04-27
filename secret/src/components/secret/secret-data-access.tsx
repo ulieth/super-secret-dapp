@@ -216,25 +216,84 @@ export function useSecretProgram() {
     onError: (error) => toast.error(`Failed to delete profile: ${error}`),
   });
 
-
-
   return {
     program,
     programId,
     accounts,
     getProgramAccount,
     createProfile,
+    updateProfileBio,
+    giveLike,
+    pauseProfile,
+    withdrawLikes,
+    deleteProfile,
   }
 }
 
-export function useSecretProgramAccount({ account }: { account: PublicKey }) {
-  const { cluster } = useCluster()
-  const transactionToast = useTransactionToast()
-  const { program, accounts } = useSecretProgram()
+export function useSecretProgramAccount(profileKey: PublicKey | undefined) {
+  const { cluster } = useCluster();
+  const { program } = useSecretProgram();
+  const provider = useAnchorProvider()
 
-  const accountQuery = useQuery({
-    queryKey: ['profile', 'fetch', { cluster, account }],
-    queryFn: () => program.account.profile.fetch(account),
-  })
+   // Query to fetch a specific profile account
+   const profileQuery = useQuery({
+    queryKey: [
+      "profile",
+      "fetch",
+      { cluster, profileKey: profileKey?.toString() },
+    ],
+    queryFn: async () => {
+      if (!profileKey) return null;
+      try {
+        const account = await program.account.profile.fetch(profileKey);
+        return {
+          publicKey: profileKey,
+          ...account,
+        };
+      } catch (error) {
+        console.error("Error fetching profile account:", error);
+        return null;
+      }
+    },
+    enabled: !!profileKey && !!provider,
+  });
+
+  // Query to fetch all likes for this profile
+ const likesQuery = useQuery({
+  queryKey: [
+    "likes",
+    "profile",
+    { cluster, profileKey: profileKey?.toString() },
+  ],
+  queryFn: async () => {
+    if (!profileKey) return [];
+
+    try {
+      // Find all like accounts where profileKey matches
+      const accounts = await program.account.like.all([
+        {
+          memcmp: {
+            offset: 8 + 32, // Skip discriminator + likerKey
+            bytes: profileKey.toBase58(),
+          },
+        },
+      ]);
+
+
+      return accounts.map((account) => ({
+        publicKey: account.publicKey,
+        ...account.account,
+      }));
+    } catch (error) {
+      console.error("Error fetching profile likes:", error);
+      return [];
+    }
+  },
+  enabled: !!profileKey && !!provider && !!profileQuery.data,
+});
+
+
+
+
 
 }
