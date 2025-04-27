@@ -45,6 +45,14 @@ export interface DeleteProfileArgs {
   recipient: string,
 }
 
+export const findVaultPda = (profilePda: PublicKey, programId: PublicKey) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("vault"), profilePda.toBuffer()],
+    programId
+  );
+};
+
+
 export function useSecretProgram() {
   const { connection } = useConnection()
   const { cluster } = useCluster()
@@ -291,6 +299,39 @@ export function useSecretProgramAccount(profileKey: PublicKey | undefined) {
   },
   enabled: !!profileKey && !!provider && !!profileQuery.data,
 });
+
+// Get vault balance
+const vaultBalanceQuery = useQuery({
+  queryKey: [
+    "vault",
+    "balance",
+    { cluster, profileKey: profileKey?.toString() },
+  ],
+  queryFn: async () => {
+    if (!profileKey || !program) return null;
+
+    try {
+      // Find the vault PDA for this profile
+      const [vaultPda] = findVaultPda(profileKey, program.programId);
+      // Get the SOL balance of the vault
+      const balance = await provider.connection.getBalance(vaultPda);
+      return balance;
+    } catch (error) {
+      console.error("Error fetching vault balance:", error);
+      return null;
+    }
+  },
+  refetchInterval: 30000, // Refresh every 30 seconds
+  enabled: !!profileKey && !!provider && !!program,
+});
+
+return {
+  profileQuery,
+  likesQuery,
+  vaultBalanceQuery,
+};
+}
+
 
 
 
