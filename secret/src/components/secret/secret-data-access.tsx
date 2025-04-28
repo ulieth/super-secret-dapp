@@ -325,16 +325,42 @@ const vaultBalanceQuery = useQuery({
   enabled: !!profileKey && !!provider && !!program,
 });
 
-return {
-  profileQuery,
-  likesQuery,
-  vaultBalanceQuery,
-};
+  return {
+    profileQuery,
+    likesQuery,
+    vaultBalanceQuery,
+  };
 }
 
+export function useLikeAccount(likeKey: PublicKey | undefined) {
+  const { cluster } = useCluster();
+  const { program } = useSecretProgram();
+  const provider = useAnchorProvider();
 
+  // Query to fetch a specific like account
+  const likeQuery = useQuery({
+    queryKey: [
+      "like",
+      "fetch",
+      { cluster, likeKey: likeKey?.toString() },
+    ],
+    queryFn: async () => {
+      if (!likeKey) return null;
 
-
-
-
-}
+      try {
+        const account = await program.account.like.fetch(likeKey);
+        return {
+          publicKey: likeKey,
+          ...account,
+        };
+      } catch (error) {
+        console.error("Error fetching like account:", error);
+        return null;
+      }
+    },
+    enabled: !!likeKey && !!provider,
+  });
+  return {
+    likeQuery,
+  };
+ }
