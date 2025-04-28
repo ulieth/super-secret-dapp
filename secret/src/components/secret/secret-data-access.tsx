@@ -73,6 +73,42 @@ export function useSecretProgram() {
     queryFn: () => connection.getParsedAccountInfo(programId),
   })
 
+  // Query to fetch all profile accounts
+  const getAllCProfiles = useQuery({
+    queryKey: ["profile", "all", { cluster }],
+    queryFn: () => program.account.profile.all(),
+  });
+
+  // Query to fetch all likes made by the connected wallet
+  const getMyDonations = useQuery({
+    queryKey: ["like", "my", { cluster, publicKey: publicKey?.toString() }],
+    queryFn: async () => {
+      if (!publicKey) return [];
+
+      try {
+      // Fetch all like accounts where likerKey = publicKey
+      const accounts = await program.account.like.all([
+        {
+          memcmp: {
+            offset: 8,
+            bytes: publicKey.toBase58(),
+          },
+        },
+      ]);
+      return accounts.map((account) => ({
+        publicKey: account.publicKey,
+        ...account.account,
+      }));
+      } catch (error) {
+        console.error("Error fetching my likes:", error);
+        return [];
+      }
+    },
+    enabled: !!publicKey && !!provider,
+  });
+
+
+
   const createProfile = useMutation<string, Error, CreateProfileArgs>({
     mutationKey: ["profile", "create", { cluster }],
     mutationFn: async ({profile_name, bio, gender, looking_for, avatar_uri}) => {
@@ -229,6 +265,7 @@ export function useSecretProgram() {
     programId,
     accounts,
     getProgramAccount,
+    getAllCProfiles,
     createProfile,
     updateProfileBio,
     giveLike,
