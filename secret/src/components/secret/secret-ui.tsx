@@ -1,122 +1,137 @@
 'use client'
 
-import { Keypair, PublicKey } from '@solana/web3.js'
-import { useMemo } from 'react'
-import { ellipsify } from '../ui/ui-layout'
-import { ExplorerLink } from '../cluster/cluster-ui'
-import { useSecretProgram, useSecretProgramAccount } from './secret-data-access'
+import { Keypair, PublicKey } from '@solana/web3.js';
+import { useMemo } from 'react';
+import { ellipsify } from '../ui/ui-layout';
+import { ExplorerLink } from '../cluster/cluster-ui';
+import { useSecretProgram, useSecretProgramAccount } from './secret-data-access';
+import { useState } from "react";
+import { BN } from "@coral-xyz/anchor";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useForm } from "react-hook-form";
+import * as Icons from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import {
+  CreateProfileArgs,
+  UpdateProfileBioArgs,
+  GiveLikeArgs,
+ } from "./secret-data-access";
 
-export function SecretCreate() {
-  const { initialize } = useSecretProgram()
-
+// Reusable card component for consistent styling
+export function ProfileCard({
+  children,
+  className = "",
+ }: {
+  children: React.ReactNode;
+  className?: string;
+ }) {
   return (
-    <button
-      className="btn btn-xs lg:btn-md btn-primary"
-      onClick={() => initialize.mutateAsync(Keypair.generate())}
-      disabled={initialize.isPending}
-    >
-      Create {initialize.isPending && '...'}
-    </button>
-  )
+    <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
+      {children}
+    </div>
+  );
 }
 
-export function SecretList() {
-  const { accounts, getProgramAccount } = useSecretProgram()
-
-  if (getProgramAccount.isLoading) {
-    return <span className="loading loading-spinner loading-lg"></span>
-  }
-  if (!getProgramAccount.data?.value) {
-    return (
-      <div className="alert alert-info flex justify-center">
-        <span>Program account not found. Make sure you have deployed the program and are on the correct cluster.</span>
-      </div>
-    )
-  }
+// Empty state component
+export function EmptyState({
+  message,
+  icon: Icon = Icons.AlertCircle,
+ }: {
+  message: string;
+  icon?: any;
+ }) {
   return (
-    <div className={'space-y-6'}>
-      {accounts.isLoading ? (
-        <span className="loading loading-spinner loading-lg"></span>
-      ) : accounts.data?.length ? (
-        <div className="grid md:grid-cols-2 gap-4">
-          {accounts.data?.map((account) => (
-            <SecretCard key={account.publicKey.toString()} account={account.publicKey} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center">
-          <h2 className={'text-2xl'}>No accounts</h2>
-          No accounts found. Create one above to get started.
-        </div>
-      )}
+    <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500">
+      <Icon className="w-12 h-12 mb-4 opacity-50" />
+      <p>{message}</p>
     </div>
-  )
+  );
 }
 
-function SecretCard({ account }: { account: PublicKey }) {
-  const { accountQuery, incrementMutation, setMutation, decrementMutation, closeMutation } = useSecretProgramAccount({
-    account,
-  })
 
-  const count = useMemo(() => accountQuery.data?.count ?? 0, [accountQuery.data?.count])
+// Create Charity Form
+export function CreateProfileForm({
+  onSubmit,
+ }: {
+  onSubmit: (data: CreateProfileArgs) => void;
+ }) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<CreateProfileArgs>();
+  const onFormSubmit = (data: CreateProfileArgs) => {
+    onSubmit(data);
+    reset();
+  };
 
-  return accountQuery.isLoading ? (
-    <span className="loading loading-spinner loading-lg"></span>
-  ) : (
-    <div className="card card-bordered border-base-300 border-4 text-neutral-content">
-      <div className="card-body items-center text-center">
-        <div className="space-y-6">
-          <h2 className="card-title justify-center text-3xl cursor-pointer" onClick={() => accountQuery.refetch()}>
-            {count}
-          </h2>
-          <div className="card-actions justify-around">
-            <button
-              className="btn btn-xs lg:btn-md btn-outline"
-              onClick={() => incrementMutation.mutateAsync()}
-              disabled={incrementMutation.isPending}
-            >
-              Increment
-            </button>
-            <button
-              className="btn btn-xs lg:btn-md btn-outline"
-              onClick={() => {
-                const value = window.prompt('Set value to:', count.toString() ?? '0')
-                if (!value || parseInt(value) === count || isNaN(parseInt(value))) {
-                  return
-                }
-                return setMutation.mutateAsync(parseInt(value))
-              }}
-              disabled={setMutation.isPending}
-            >
-              Set
-            </button>
-            <button
-              className="btn btn-xs lg:btn-md btn-outline"
-              onClick={() => decrementMutation.mutateAsync()}
-              disabled={decrementMutation.isPending}
-            >
-              Decrement
-            </button>
-          </div>
-          <div className="text-center space-y-4">
-            <p>
-              <ExplorerLink path={`account/${account}`} label={ellipsify(account.toString())} />
-            </p>
-            <button
-              className="btn btn-xs btn-secondary btn-outline"
-              onClick={() => {
-                if (!window.confirm('Are you sure you want to close this account?')) {
-                  return
-                }
-                return closeMutation.mutateAsync()
-              }}
-              disabled={closeMutation.isPending}
-            >
-              Close
-            </button>
-          </div>
-        </div>
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+      <div>
+        <label
+          htmlFor="profile name"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Profile Name
+        </label>
+        <input
+          id="name"
+          type="text"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.profile_name ? "border-red-500" : "border-gray-300"
+          }`}
+          placeholder="Enter your profile name"
+          {...register("profile_name", { required: "Your profile name is required" })}
+        />
+        {errors.profile_name && (
+          <p className="mt-1 text-sm text-red-500">{errors.profile_name.message}</p>
+        )}
       </div>
-    </div>
-  )
+
+      <div>
+        <label
+          htmlFor="bio"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Bio
+        </label>
+        <textarea
+          id="bio"
+          rows={4}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.bio ? "border-red-500" : "border-gray-300"
+          }`}
+          placeholder="Describe yourself (max 100 characters)"
+          {...register("bio", {
+            required: "Your bio is required",
+            maxLength: {
+              value: 100,
+              message: "Your bio cannot exceed 100 characters",
+            },
+          })}
+        />
+        {errors.bio && (
+          <p className="mt-1 text-sm text-red-500">
+            {errors.bio.message}
+          </p>
+        )}
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {isSubmitting ? (
+          <span className="flex items-center justify-center">
+            <span className="mr-2">Creating...</span>
+            <Icons.Loader2 className="animate-spin h-4 w-4" />
+          </span>
+        ) : (
+          "Create Profile"
+        )}
+      </button>
+    </form>
+  );
 }

@@ -4,8 +4,8 @@ import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletButton } from '../solana/solana-provider'
 import { AppHero, ellipsify } from '../ui/ui-layout'
 import { ExplorerLink } from '../cluster/cluster-ui'
-import { useSecretProgram } from './secret-data-access'
-import { SecretCreate, SecretList } from './secret-ui'
+import { CreateProfileArgs, useSecretProgram } from './secret-data-access'
+import { CreateProfileForm } from './secret-ui'
 
 export default function SecretFeature() {
   const { publicKey } = useWallet()
@@ -22,9 +22,10 @@ export default function SecretFeature() {
         <p className="mb-6">
           <ExplorerLink path={`account/${programId}`} label={ellipsify(programId.toString())} />
         </p>
-        <SecretCreate />
+        <CreateProfileForm onSubmit={function (data: CreateProfileArgs): void {
+          throw new Error('Function not implemented.')
+        } } />
       </AppHero>
-      <SecretList />
     </div>
   ) : (
     <div className="max-w-4xl mx-auto">
