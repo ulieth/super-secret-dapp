@@ -117,6 +117,50 @@ export function CreateProfileForm({
           </p>
         )}
       </div>
+      <div>
+        <label
+          htmlFor="gender"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Gender
+        </label>
+        <textarea
+          id="gender"
+          rows={4}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.gender ? "border-red-500" : "border-gray-300"
+          }`}
+          placeholder="What is your gender?"
+          {...register("gender", { required: "You must tell your gender"})}
+        />
+        {errors.gender && (
+          <p className="mt-1 text-sm text-red-500">
+            {errors.gender.message}
+          </p>
+        )}
+      </div>
+      <div>
+        <label
+          htmlFor="looking for"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Looking for...
+        </label>
+        <textarea
+          id="looking for"
+          rows={4}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.gender ? "border-red-500" : "border-gray-300"
+          }`}
+          placeholder="What are you looking for?"
+          {...register("looking_for", { required: "You must tell what are you looking for"})}
+        />
+        {errors.looking_for && (
+          <p className="mt-1 text-sm text-red-500">
+            {errors.looking_for.message}
+          </p>
+        )}
+      </div>
 
       <button
         type="submit"
