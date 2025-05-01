@@ -49,7 +49,7 @@ export function EmptyState({
 }
 
 
-// Create Charity Form
+// Create Profile Form
 export function CreateProfileForm({
   onSubmit,
  }: {
@@ -71,7 +71,7 @@ export function CreateProfileForm({
       <div>
         <label
           htmlFor="profile name"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-rose-500 mb-1"
         >
           Profile Name
         </label>
@@ -92,7 +92,7 @@ export function CreateProfileForm({
       <div>
         <label
           htmlFor="bio"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-rose-500 mb-1"
         >
           Bio
         </label>
@@ -120,7 +120,7 @@ export function CreateProfileForm({
       <div>
         <label
           htmlFor="gender"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-rose-500 mb-1"
         >
           Gender
         </label>
@@ -142,7 +142,7 @@ export function CreateProfileForm({
       <div>
         <label
           htmlFor="looking for"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-rose-500 mb-1"
         >
           Looking for...
         </label>

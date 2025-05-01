@@ -14,9 +14,9 @@ export default function SecretFeature() {
   return publicKey ? (
     <div>
       <AppHero
-        title="Secret"
+        title={<span className="text-rose-500 text-4xl font-bold">Secret</span>}
         subtitle={
-          'Create a new account by clicking the "Create" button. The state of a account is stored on-chain and can be manipulated by calling the program\'s methods (increment, decrement, set, and close).'
+          'Create your profile and find you blockchain buddy'
         }
       >
         <p className="mb-6">
