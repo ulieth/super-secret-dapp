@@ -166,7 +166,7 @@ export function CreateProfileForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-1/2 mx-auto flex items-center justify-center gap-2 py-2 px-4 bg-rose-500 hover:bg-rose-700 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
       {isSubmitting ? (
       <>
