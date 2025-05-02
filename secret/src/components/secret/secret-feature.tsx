@@ -16,7 +16,7 @@ export default function SecretFeature() {
       <AppHero
         title={<span className="text-rose-500 text-4xl font-bold">Secret</span>}
         subtitle={
-          'Create your profile and find you blockchain buddy'
+            'Create your profile and find your blockchain soulmate'
         }
       >
         <p className="mb-6">

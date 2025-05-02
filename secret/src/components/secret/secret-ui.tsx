@@ -10,6 +10,7 @@ import { BN } from "@coral-xyz/anchor";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useForm } from "react-hook-form";
 import * as Icons from "lucide-react";
+import { Heart } from 'lucide-react';
 import { formatDistanceToNow } from "date-fns";
 import {
   CreateProfileArgs,
@@ -102,7 +103,7 @@ export function CreateProfileForm({
           className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.bio ? "border-red-500" : "border-gray-300"
           }`}
-          placeholder="Describe yourself (max 100 characters)"
+          placeholder="Describe yourself in few words"
           {...register("bio", {
             required: "Your bio is required",
             maxLength: {
@@ -165,16 +166,19 @@ export function CreateProfileForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {isSubmitting ? (
-          <span className="flex items-center justify-center">
-            <span className="mr-2">Creating...</span>
-            <Icons.Loader2 className="animate-spin h-4 w-4" />
-          </span>
-        ) : (
-          "Create Profile"
-        )}
+      {isSubmitting ? (
+      <>
+        <span>Creating...</span>
+        <Icons.Loader2 className="animate-spin h-4 w-4" />
+      </>
+      ) : (
+      <>
+        <Heart className="h-4 w-4 text-white" />
+        <span>Create Profile</span>
+      </>
+      )}
       </button>
     </form>
   );
