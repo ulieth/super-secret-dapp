@@ -49,6 +49,44 @@ export function EmptyState({
   );
 }
 
+// Loading spinner
+export function LoadingSpinner() {
+  return (
+    <div className="flex justify-center p-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+ }
+
+ // Format lamports as SOL with specified decimal places
+ export function formatSol(lamports: number | string | BN, decimals = 2) {
+  const value =
+    typeof lamports === "string"
+      ? parseFloat(lamports)
+      : lamports instanceof BN
+      ? lamports.toNumber()
+      : lamports;
+
+
+  return (value / 1_000_000_000).toFixed(decimals) + " SOL";
+ }
+
+
+ // Format timestamp to relative time
+ export function formatTime(timestamp: number | BN) {
+  const time =
+    timestamp instanceof BN ? timestamp.toNumber() * 1000 : timestamp * 1000;
+  return formatDistanceToNow(new Date(time), { addSuffix: true });
+ }
+
+
+ // Truncate address for display
+ export function truncateAddress(address?: string | PublicKey, length = 4) {
+  if (!address) return "";
+  const base58 = typeof address === "string" ? address : address.toString();
+  return `${base58.slice(0, length)}...${base58.slice(-length)}`;
+ }
+
 
 // Create Profile Form
 export function CreateProfileForm({
@@ -79,7 +117,7 @@ export function CreateProfileForm({
         <input
           id="name"
           type="text"
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`w-1/2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.profile_name ? "border-red-500" : "border-gray-300"
           }`}
           placeholder="Enter your profile name"
@@ -100,7 +138,7 @@ export function CreateProfileForm({
         <textarea
           id="bio"
           rows={4}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`w-1/2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.bio ? "border-red-500" : "border-gray-300"
           }`}
           placeholder="Describe yourself in few words"
@@ -127,8 +165,8 @@ export function CreateProfileForm({
         </label>
         <textarea
           id="gender"
-          rows={4}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          rows={1}
+          className={`w-1/2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.gender ? "border-red-500" : "border-gray-300"
           }`}
           placeholder="What is your gender?"
@@ -149,8 +187,8 @@ export function CreateProfileForm({
         </label>
         <textarea
           id="looking for"
-          rows={4}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          rows={1}
+          className={`w-1/2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.gender ? "border-red-500" : "border-gray-300"
           }`}
           placeholder="What are you looking for?"
@@ -183,3 +221,74 @@ export function CreateProfileForm({
     </form>
   );
 }
+
+// Update Profile Bio Form
+export function UpdateProfileBioForm({
+  profile,
+  currentProfileBio,
+  onSubmit,
+ }: {
+  profile: string;
+  currentProfileBio: string;
+  onSubmit: (data: UpdateProfileBioArgs) => void;
+ }) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<UpdateProfileBioArgs>({
+    defaultValues: {
+      profile,
+      bio: currentProfileBio,
+    },
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label
+          htmlFor="bio"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Bio
+        </label>
+        <textarea
+          id="bio"
+          rows={4}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.bio ? "border-red-500" : "border-gray-300"
+          }`}
+          placeholder="Describe yourself"
+          {...register("bio", {
+            required: "Bio is required",
+            maxLength: {
+              value: 100,
+              message: "Bio cannot exceed 100 characters",
+            },
+          })}
+        />
+        {errors.bio && (
+          <p className="mt-1 text-sm text-red-500">
+            {errors.bio.message}
+          </p>
+        )}
+      </div>
+
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {isSubmitting ? (
+          <span className="flex items-center justify-center">
+            <span className="mr-2">Updating...</span>
+            <Icons.Loader2 className="animate-spin h-4 w-4" />
+          </span>
+        ) : (
+          "Update Profile Bio"
+        )}
+      </button>
+    </form>
+  );
+ }
