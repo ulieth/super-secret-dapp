@@ -558,7 +558,7 @@ export function CharitySummary({
       <div className="mt-3 flex flex-wrap gap-2 text-sm">
         <div className="flex items-center text-gray-700">
           <Icons.Users className="h-4 w-4 mr-1" />
-          <span>{profile.likesCount.toString()} likers</span>
+          <span>{profile.likeCount.toString()} likers</span>
         </div>
         <div className="flex items-center text-gray-700">
           <Icons.Coins className="h-4 w-4 mr-1" />
@@ -569,6 +569,272 @@ export function CharitySummary({
           <span>Created {formatTime(profile.createdAt)}</span>
         </div>
       </div>
+    </div>
+  );
+ }
+
+ // Detailed profile view component
+export function ProfileDetails({
+  profile,
+  likes,
+  vaultBalance,
+  isAuthority,
+  onPauseToggle,
+  onWithdraw,
+  onDelete,
+ }: {
+  profile: any;
+  likes: any[];
+  vaultBalance: number;
+  isAuthority: boolean;
+  onPauseToggle: (paused: boolean) => void;
+  onWithdraw: (data: any) => void;
+  onDelete: () => void;
+ }) {
+  const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      {/* Header with status and actions */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">{profile.profile_name}</h2>
+        {isAuthority && (
+          <div className="flex space-x-2">
+            <button
+              onClick={() => onPauseToggle(!profile.paused)}
+              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md ${
+                profile.paused
+                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                  : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+              }`}
+            >
+              {profile.paused ? (
+                <>
+                  <Icons.Play className="mr-1.5 h-4 w-4" />
+                  Your all likes
+                </>
+              ) : (
+                <>
+                  <Icons.Pause className="mr-1.5 h-4 w-4" />
+                  Pause Likes
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Stats overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ProfileCard className="flex flex-col items-center justify-center p-4">
+          <Icons.Users className="h-8 w-8 text-blue-500 mb-2" />
+          <h3 className="text-lg font-semibold">Total Likers</h3>
+          <p className="text-3xl font-bold text-gray-900">
+            {profile.likeCount.toString()}
+          </p>
+        </ProfileCard>
+
+
+        <ProfileCard className="flex flex-col items-center justify-center p-4">
+          <Icons.Coins className="h-8 w-8 text-green-500 mb-2" />
+          <h3 className="text-lg font-semibold">Total Donated</h3>
+          <p className="text-3xl font-bold text-gray-900">
+            {formatSol(profile.likesInLamports)}
+          </p>
+        </ProfileCard>
+
+        <ProfileCard className="flex flex-col items-center justify-center p-4">
+          <Icons.Wallet className="h-8 w-8 text-purple-500 mb-2" />
+          <h3 className="text-lg font-semibold">Vault Balance</h3>
+          <p className="text-3xl font-bold text-gray-900">
+            {formatSol(vaultBalance || 0)}
+          </p>
+        </ProfileCard>
+      </div>
+
+
+      {/* Description */}
+      <ProfileCard>
+        <h3 className="text-lg font-semibold mb-2">About</h3>
+        <p className="text-gray-700">{profile.bio}</p>
+        <h3 className="text-lg font-semibold mb-2">Gender</h3>
+        <p className="text-gray-700">{profile.gender}</p>
+        <h3 className="text-lg font-semibold mb-2">About</h3>
+        <p className="text-gray-700">{profile.bio}</p>
+        <h3 className="text-lg font-semibold mb-2">Looking for</h3>
+        <p className="text-gray-700">{profile.looking_for}</p>
+        <h3 className="text-lg font-semibold mb-2">Avatar</h3>
+        <p className="text-gray-700">{profile.avatar_uri}</p>
+
+        <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-4 text-sm text-gray-600">
+          <div>
+            <p className="flex items-center">
+              <Icons.User className="h-4 w-4 mr-2" />
+              <span className="font-medium mr-1">Authority:</span>
+              <span>{truncateAddress(profile.authority)}</span>
+            </p>
+            <p className="flex items-center mt-2">
+              <Icons.Calendar className="h-4 w-4 mr-2" />
+              <span className="font-medium mr-1">Created:</span>
+              <span>{formatTime(profile.createdAt)}</span>
+            </p>
+          </div>
+          <div>
+            <p className="flex items-center">
+              <Icons.RefreshCw className="h-4 w-4 mr-2" />
+              <span className="font-medium mr-1">Last Updated:</span>
+              <span>{formatTime(profile.updatedAt)}</span>
+            </p>
+            {profile.withdrawnAt && (
+              <p className="flex items-center mt-2">
+                <Icons.ArrowDownToLine className="h-4 w-4 mr-2" />
+                <span className="font-medium mr-1">Last Withdrawal:</span>
+                <span>{formatTime(profile.withdrawnAt)}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      </ProfileCard>
+
+
+      {/* Authority Actions */}
+      {isAuthority && (
+        <ProfileCard>
+          <h3 className="text-lg font-semibold mb-4">Charity Management</h3>
+
+
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <h4 className="text-md font-medium mb-2">Withdraw Funds</h4>
+              <p className="text-sm text-gray-600 mb-2">
+                Transfer funds from the charity vault to another account.
+              </p>
+              {showWithdrawForm ? (
+                <div className="mt-2">
+                  <WithdrawLikesForm
+                    profile={profile.publicKey.toString()}
+                    vaultBalance={vaultBalance || 0}
+                    onSubmit={onWithdraw}
+                  />
+                  <button
+                    onClick={() => setShowWithdrawForm(false)}
+                    className="w-full mt-2 text-gray-600 text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowWithdrawForm(true)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-purple-100 text-purple-800 hover:bg-purple-200"
+                  disabled={!vaultBalance || vaultBalance <= 1_000_000}
+                >
+                  <Icons.ArrowDownToLine className="mr-1.5 h-4 w-4" />
+                  Withdraw Likes
+                </button>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="text-md font-medium mb-2">Danger Zone</h4>
+              <p className="text-sm text-gray-600 mb-2">
+                Permanently delete this profile. This action cannot be undone.
+              </p>
+
+
+              {showDeleteConfirm ? (
+                <div className="p-4 bg-red-50 rounded-md">
+                  <p className="text-sm text-red-700 mb-4">
+                    Are you sure you want to delete this profile? Any remaining
+                    likes will be returned to your wallet.
+                  </p>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={onDelete}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-red-500 text-white hover:bg-red-600"
+                    >
+                      <Icons.Trash2 className="mr-1.5 h-4 w-4" />
+                      Yes, Delete Profile
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-800 hover:bg-red-200"
+                >
+                  <Icons.Trash2 className="mr-1.5 h-4 w-4" />
+                  Delete Charity
+                </button>
+              )}
+            </div>
+          </div>
+        </ProfileCard>
+      )}
+
+
+      {/* Likes History */}
+      <ProfileCard>
+        <h3 className="text-lg font-semibold mb-4">Donation History</h3>
+        {likes.length === 0 ? (
+          <EmptyState
+            message="No donations yet. Be the first to donate!"
+            icon={Icons.HeartOff}
+          />
+        ) : (
+          <div className="overflow-hidden border border-gray-200 rounded-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Donor
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Amount
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {likes
+                  .slice()
+                  .reverse()
+                  .map((donation) => (
+                    <tr key={donation.publicKey.toString()}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {truncateAddress(donation.donorKey)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium text-green-600">
+                        {formatSol(donation.amountInLamports)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatTime(donation.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ProfileCard>
     </div>
   );
  }
