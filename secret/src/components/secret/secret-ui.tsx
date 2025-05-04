@@ -16,6 +16,7 @@ import {
   CreateProfileArgs,
   UpdateProfileBioArgs,
   GiveLikeArgs,
+  WithdrawLikesArgs,
  } from "./secret-data-access";
 
 // Reusable card component for consistent styling
@@ -314,10 +315,8 @@ export function GiveLikeForm({
     },
   });
 
-
   const amount = watch("amount");
   const lamports = amount ? Math.floor(amount * 1_000_000_000) : 0;
-
 
   const onFormSubmit = (data: GiveLikeArgs) => {
     // Convert SOL to lamports for the API
@@ -382,6 +381,132 @@ export function GiveLikeForm({
           <span className="flex items-center justify-center">
             <Icons.Heart className="mr-2 h-4 w-4" />
             Like Now
+          </span>
+        )}
+      </button>
+    </form>
+  );
+ }
+
+ // Withdraw Form
+export function WithdrawLikesForm({
+  profile,
+  vaultBalance,
+  onSubmit,
+ }: {
+  profile: string;
+  vaultBalance: number;
+  onSubmit: (data: {
+    profile: string;
+    recipient: string;
+    amount: number;
+  }) => void;
+ }) {
+  const { publicKey } = useWallet();
+  const [recipient, setRecipient] = useState(publicKey?.toString() || "");
+  const [amount, setAmount] = useState(0.01);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const availableBalance = Math.max(0, vaultBalance - 1_000_000); // Keeping min rent exemption
+  const maxWithdrawSol = availableBalance / 1_000_000_000;
+  const lamportsAmount = Math.floor(amount * 1_000_000_000);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recipient || lamportsAmount <= 0 || lamportsAmount > availableBalance)
+      return;
+
+    setIsSubmitting(true);
+    onSubmit({
+      profile,
+      recipient,
+      amount: lamportsAmount,
+    });
+    setIsSubmitting(false);
+  };
+
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label
+          htmlFor="recipient"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Recipient Address
+        </label>
+        <input
+          id="recipient"
+          type="text"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Solana address to receive funds"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          required
+        />
+      </div>
+
+
+      <div>
+        <label
+          htmlFor="amount"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Amount to Withdraw (SOL)
+        </label>
+        <div className="relative mt-1 rounded-md shadow-sm">
+          <input
+            id="amount"
+            type="number"
+            step="0.01"
+            min="0.001"
+            max={maxWithdrawSol}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter amount in SOL"
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            required
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <span className="text-gray-500 sm:text-sm">SOL</span>
+          </div>
+        </div>
+
+
+        <div className="mt-2 flex justify-between text-sm">
+          <span className="text-gray-500">
+            Available: {formatSol(availableBalance)}
+          </span>
+          <button
+            type="button"
+            className="text-blue-600 hover:text-blue-800"
+            onClick={() => setAmount(maxWithdrawSol)}
+          >
+            Max
+          </button>
+        </div>
+      </div>
+
+
+      <button
+        type="submit"
+        disabled={
+          isSubmitting ||
+          !recipient ||
+          lamportsAmount <= 0 ||
+          lamportsAmount > availableBalance
+        }
+        className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {isSubmitting ? (
+          <span className="flex items-center justify-center">
+            <span className="mr-2">Withdrawing...</span>
+            <Icons.Loader2 className="animate-spin h-4 w-4" />
+          </span>
+        ) : (
+          <span className="flex items-center justify-center">
+            <Icons.ArrowDownToLine className="mr-2 h-4 w-4" />
+            Withdraw Funds
           </span>
         )}
       </button>
