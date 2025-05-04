@@ -513,3 +513,62 @@ export function WithdrawLikesForm({
     </form>
   );
  }
+
+// Profile Summary component for list likes
+export function CharitySummary({
+  profile,
+  isAuthority = false,
+  onClick,
+ }: {
+  profile: any;
+  isAuthority?: boolean;
+  onClick?: () => void;
+ }) {
+  return (
+    <div
+      className={`border rounded-lg p-4 mb-4 bg-white shadow-sm hover:shadow-md transition-shadow ${
+        onClick ? "cursor-pointer" : ""
+      }`}
+      onClick={onClick}
+    >
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {profile.profile_name}
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">{profile.bio}</p>
+          <p className="text-sm text-gray-600 mt-1">{profile.gender}</p>
+          <p className="text-sm text-gray-600 mt-1">{profile.looking_for}</p>
+          <p className="text-sm text-gray-600 mt-1">{profile.avatar_uri}</p>
+        </div>
+        {profile.paused && (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <Icons.Pause className="mr-1 h-3 w-3" />
+            Paused
+          </span>
+        )}
+        {isAuthority && (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <Icons.Shield className="mr-1 h-3 w-3" />
+            Owner
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-sm">
+        <div className="flex items-center text-gray-700">
+          <Icons.Users className="h-4 w-4 mr-1" />
+          <span>{profile.likesCount.toString()} likers</span>
+        </div>
+        <div className="flex items-center text-gray-700">
+          <Icons.Coins className="h-4 w-4 mr-1" />
+          <span>{formatSol(profile.likesInLamports)}</span>
+        </div>
+        <div className="flex items-center text-gray-700">
+          <Icons.Calendar className="h-4 w-4 mr-1" />
+          <span>Created {formatTime(profile.createdAt)}</span>
+        </div>
+      </div>
+    </div>
+  );
+ }
