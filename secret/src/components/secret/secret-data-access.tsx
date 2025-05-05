@@ -52,6 +52,18 @@ export const findVaultPda = (profilePda: PublicKey, programId: PublicKey) => {
   );
 };
 
+export const findProfilePda = (
+  profile_name: string,
+  authority: PublicKey,
+  programId: PublicKey
+ ) => {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("profile"), authority.toBuffer(), Buffer.from(profile_name)],
+    programId
+  );
+};
+
+
 
 export function useSecretProgram() {
   const { connection } = useConnection()
