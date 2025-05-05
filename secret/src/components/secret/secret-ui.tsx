@@ -838,3 +838,24 @@ export function ProfileDetails({
     </div>
   );
  }
+
+// Likes giving summary component for user's likes list
+export function LikesSummary({ like }: { like: any }) {
+  return (
+    <div className="border rounded-lg p-4 mb-4 bg-white shadow-sm">
+      <div className="flex justify-between">
+        <div>
+          <h3 className="text-md font-semibold text-gray-900">
+            {like.profileName}
+          </h3>
+          <p className="text-sm text-gray-600">
+            {formatSol(like.likesInLamports)}
+          </p>
+        </div>
+        <span className="text-sm text-gray-500">
+          {formatTime(like.createdAt)}
+        </span>
+      </div>
+    </div>
+  );
+ }
