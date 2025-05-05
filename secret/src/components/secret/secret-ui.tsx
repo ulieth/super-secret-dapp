@@ -515,7 +515,7 @@ export function WithdrawLikesForm({
  }
 
 // Profile Summary component for list likes
-export function CharitySummary({
+export function ProfileSummary({
   profile,
   isAuthority = false,
   onClick,
