@@ -63,8 +63,6 @@ export const findProfilePda = (
   );
 };
 
-
-
 export function useSecretProgram() {
   const { connection } = useConnection()
   const { cluster } = useCluster()
@@ -86,13 +84,13 @@ export function useSecretProgram() {
   })
 
   // Query to fetch all profile accounts
-  const getAllCProfiles = useQuery({
+  const getAllProfiles = useQuery({
     queryKey: ["profile", "all", { cluster }],
     queryFn: () => program.account.profile.all(),
   });
 
   // Query to fetch all likes made by the connected wallet
-  const getMyDonations = useQuery({
+  const getMyLikes = useQuery({
     queryKey: ["like", "my", { cluster, publicKey: publicKey?.toString() }],
     queryFn: async () => {
       if (!publicKey) return [];
@@ -118,8 +116,6 @@ export function useSecretProgram() {
     },
     enabled: !!publicKey && !!provider,
   });
-
-
 
   const createProfile = useMutation<string, Error, CreateProfileArgs>({
     mutationKey: ["profile", "create", { cluster }],
@@ -277,7 +273,8 @@ export function useSecretProgram() {
     programId,
     accounts,
     getProgramAccount,
-    getAllCProfiles,
+    getAllProfiles,
+    getMyLikes,
     createProfile,
     updateProfileBio,
     giveLike,
