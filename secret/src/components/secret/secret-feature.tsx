@@ -203,6 +203,201 @@ export function ProfileListFeature() {
   );
  }
 
+// Single profile detail page
+export function ProfileDetailFeature() {
+  const { profileId } = useParams();
+  const router = useRouter();
+  const { publicKey } = useWallet();
+  const [showUpdateBioForm, setShowUpdateBioForm] = useState(false);
+
+  const profilePubkey = useMemo(() => {
+    try {
+      return new PublicKey(profileId as string);
+    } catch (error) {
+      return undefined;
+    }
+  }, [profileId]);
+
+
+  const {
+    program,
+    programId,
+    giveLike,
+    updateProfileBio,
+    pauseProfile,
+    withdrawLikes,
+    deleteProfile,
+  } = useSecretProgram();
+
+
+  const { profileQuery, likesQuery, vaultBalanceQuery } =
+    useSecretProgramAccount(profilePubkey);
+
+  // Check if the user is the authority of this profile
+  const isAuthority = useMemo(() => {
+    if (!publicKey || !profileQuery.data) return false;
+    return profileQuery.data.authority.toString() === publicKey.toString();
+  }, [publicKey, profileQuery.data]);
+
+  // Handle actions
+  const handleLike = async (data: { amount: number }) => {
+    await giveLike.mutateAsync({
+      profile: profileId as string,
+      amount: data.amount,
+    });
+  };
+
+  const handleUpdateprofileBio = async (data: { bio: string }) => {
+    await updateProfileBio.mutateAsync({
+      profile: profileId as string,
+      bio: data.bio,
+    });
+    setShowUpdateBioForm(false);
+  };
+
+  const handlePauseToggle = async (paused: boolean) => {
+    await pauseProfile.mutateAsync({
+      profile: profileId as string,
+      paused,
+    });
+  };
+
+  const handleWithdrawLikes = async (data: {
+    recipient: string;
+    amount: number;
+  }) => {
+    await withdrawLikes.mutateAsync({
+      profile: profileId as string,
+      recipient: data.recipient,
+      amount: data.amount,
+    });
+  };
+
+  const handleProfileDelete = async () => {
+    await deleteProfile.mutateAsync({
+      profile: profileId as string,
+      recipient: publicKey?.toString() || "",
+    });
+    router.push("/profile");
+  };
+
+  // Loading and error states
+  if (profileQuery.isLoading || likesQuery.isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (profileQuery.error) {
+    return (
+      <EmptyState
+        message="Error loading profile. The profile may not exist or has been deleted."
+        icon={Icons.AlertCircle}
+      />
+    );
+  }
+
+  if (!profileQuery.data) {
+    return <EmptyState message="Profile not found" icon={Icons.Search} />;
+  }
+
+  const profile = profileQuery.data;
+  const likes = likesQuery.data || [];
+  const vaultBalance = vaultBalanceQuery.data || 0;
+
+  return (
+    <div className="container mx-auto max-w-4xl py-8 px-4">
+      {/* Back button */}
+      <div className="mb-6">
+        <Link
+          href="/profile"
+          className="inline-flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <Icons.ArrowLeft className="mr-2 h-4 w-4" />
+          Back to All Profiles
+        </Link>
+      </div>
+
+      {/* Profile detail section */}
+      <ProfileDetails
+        profile={profile}
+        likes={likes}
+        vaultBalance={vaultBalance}
+        isAuthority={isAuthority}
+        onPauseToggle={handlePauseToggle}
+        onWithdraw={handleWithdrawLikes}
+        onDelete={handleProfileDelete}
+      />
+
+      {/* Update profile form for authority */}
+      {isAuthority && showUpdateBioForm && (
+        <ProfileCard className="mt-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Update Profile Bio
+          </h3>
+          <UpdateProfileBioForm
+            profile={profileId as string}
+            currentProfileBio={profile.bio}
+            onSubmit={handleUpdateprofileBio}
+          />
+          <button
+            onClick={() => setShowUpdateBioForm(false)}
+            className="w-full mt-2 text-gray-600 text-sm"
+          >
+            Cancel
+          </button>
+        </ProfileCard>
+      )}
+
+      {/* Update button for authority */}
+      {isAuthority && !showUpdateBioForm && (
+        <button
+          onClick={() => setShowUpdateBioForm(true)}
+          className="mt-6 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
+        >
+          <Icons.Edit className="mr-2 h-4 w-4" />
+          Update Bio
+        </button>
+      )}
+
+      {/* Like form for non-paused profiles */}
+      {publicKey && !profile.paused && !isAuthority && (
+        <ProfileCard className="mt-6">
+          <h3 className="text-lg font-semibold mb-4">Make a Like</h3>
+          <GiveLikeForm profile={profileId as string} onSubmit={handleLike} />
+        </ProfileCard>
+      )}
+
+      {/* Profile paused notification */}
+      {profile.paused && (
+        <div className="mt-6 p-6 bg-yellow-50 rounded-lg border border-yellow-100 text-center">
+          <Icons.Pause className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Profile is paused
+          </h3>
+          <p className="text-gray-600">
+            The profile has been temporarily paused.
+          </p>
+        </div>
+      )}
+
+      {/* Wallet connect prompt */}
+      {!publicKey && !profile.paused && (
+        <div className="mt-6 p-6 bg-blue-50 rounded-lg border border-blue-100 text-center">
+          <Icons.Wallet className="mx-auto h-12 w-12 text-blue-500 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Connect Your Wallet to Like
+          </h3>
+          <p className="text-gray-600 mb-4">
+            You need to connect your wallet to make likes to this profile.
+          </p>
+          <button className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
+            Connect Wallet
+          </button>
+        </div>
+      )}
+    </div>
+  );
+ }
+
 export default function SecretFeature() {
   const { publicKey } = useWallet()
   const { programId } = useSecretProgram()
