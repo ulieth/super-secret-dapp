@@ -398,6 +398,153 @@ export function ProfileDetailFeature() {
   );
  }
 
+// My Likes History Feature
+export function MyLikesFeature() {
+  const { publicKey } = useWallet();
+  const { getMyLikes } = useSecretProgram();
+  const router = useRouter();
+
+  // If user not connected, redirect or show message
+  if (!publicKey) {
+    return (
+      <div className="container mx-auto max-w-4xl py-8 px-4 text-center">
+        <Icons.Wallet className="mx-auto h-16 w-16 text-blue-500 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          Connect Your Wallet
+        </h2>
+        <p className="text-gray-600 mb-6">
+          Please connect your wallet to view your likes history.
+        </p>
+        <button className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
+          Connect Wallet
+        </button>
+      </div>
+    );
+  }
+
+  if (getMyLikes.isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  const likes = getMyLikes.data || [];
+
+
+  return (
+    <div className="container mx-auto max-w-4xl py-8 px-4">
+      <div className="mb-6">
+        <Link
+          href="/charity"
+          className="inline-flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <Icons.ArrowLeft className="mr-2 h-4 w-4" />
+          Back to All Profiles
+        </Link>
+      </div>
+
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">
+        My Likes History
+      </h1>
+
+      {likes.length === 0 ? (
+        <EmptyState
+          message="You haven't made any like yet."
+          icon={Icons.Heart}
+        />
+      ) : (
+        <ProfileCard>
+          <div className="overflow-hidden border border-gray-200 rounded-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Profile
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Amount
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Date
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {likes
+                  .slice()
+                  .reverse()
+                  .map((like) => (
+                    <tr key={like.publicKey.toString()}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {like.profileName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium text-green-600">
+                        {formatSol(like.likesInLamports)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatTime(like.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/profile/${like.profileKey.toString()}`
+                            )
+                          }
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          View Profile
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+
+          <div className="mt-6 p-4 bg-gray-50 rounded-md">
+            <h3 className="text-lg font-semibold mb-2">Likes Summary</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-white rounded-md border border-gray-200">
+                <div className="text-2xl font-bold text-gray-900">
+                  {formatSol(
+                    likes.reduce(
+                      (sum, d) => sum + Number(d.likesInLamports || 0),
+                      0
+                    )
+                  )}
+                </div>
+                <div className="text-sm text-gray-500">Total Liked</div>
+              </div>
+              <div className="p-4 bg-white rounded-md border border-gray-200">
+                <div className="text-2xl font-bold text-gray-900">
+                  {likes.length}
+                </div>
+                <div className="text-sm text-gray-500">Total Likes</div>
+              </div>
+            </div>
+          </div>
+        </ProfileCard>
+      )}
+    </div>
+  );
+ }
+
+
 export default function SecretFeature() {
   const { publicKey } = useWallet()
   const { programId } = useSecretProgram()
