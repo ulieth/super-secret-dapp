@@ -22,7 +22,7 @@ pub struct CreateProfile<'info> {
         seeds = [b"profile", authority.key().as_ref(), profile_name.as_bytes()],
         bump
     )]
-    profile: Account<'info, Profile>,
+    pub profile: Account<'info, Profile>,
 
     /// The vault that will hold SOL for each received like.
     /// Why we use a separate vault:
@@ -56,19 +56,4 @@ pub struct CreateProfile<'info> {
     pub vault: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(bio: String)]
-pub struct UpdateProfile<'info> {
-    #[account(mut)]
-    pub authority: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [b"profile", authority.key().as_ref(), profile.profile_name.as_bytes()],
-        bump,
-        has_one = authority,
-    )]
-    pub profile: Account<'info, Profile>,
 }

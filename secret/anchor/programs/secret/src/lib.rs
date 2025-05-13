@@ -4,14 +4,13 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::system_instruction;
 
 pub mod common;
-pub mod errors;
 pub mod events;
 pub mod state;
 pub mod instructions;
 
 use crate::common::*;
 use crate::instructions::*;
-pub use errors::*;
+
 pub use events::*;
 use crate::state::*;
 
@@ -296,115 +295,4 @@ pub mod secret {
 
 
 
-}
-
-#[derive(Accounts)]
-pub struct DeleteProfile<'info> {
-    #[account(mut)]
-    authority: Signer<'info>,
-
-    #[account(
-        mut,
-        close = authority,
-        seeds = [b"profile", authority.key().as_ref(), profile.profile_name.as_bytes()],
-        bump,
-        has_one = authority,
-    )]
-    profile: Account<'info, Profile>,
-
-    #[account(
-        mut,
-        seeds = [b"vault", profile.key().as_ref()],
-        bump
-    )]
-    /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
-    vault: UncheckedAccount<'info>,
-
-    /// Destination account that will receive the withdrawn SOL
-    /// Allows the profile authority to send funds to a different address than their own
-    /// Why `UncheckedAccount`:
-    /// - We're only transferring SOL (no deserialization required)
-    /// - We're not enforcing any constraints on it through Anchor's account validation
-    #[account(mut)]
-    /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
-    pub recipient: UncheckedAccount<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-#[instruction(paused: bool)]
-pub struct PauseProfile<'info> {
-    #[account(mut)]
-    authority: Signer<'info>,
-
-    #[account(
-      mut,
-      seeds = [b"profile", authority.key().as_ref(), profile.profile_name.as_bytes()],
-      bump,
-      has_one = authority
-    )]
-    profile: Account<'info, Profile>
-}
-
-#[derive(Accounts)]
-#[instruction(amount: u64)]
-pub struct GiveLike<'info> {
-    #[account(mut)]
-    liker: Signer<'info>,
-
-    #[account(mut)]
-    profile: Account<'info, Profile>,
-
-    #[account(
-        mut,
-        seeds = [b"vault", profile.key().as_ref()],
-        bump
-    )]
-    /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
-    pub vault: UncheckedAccount<'info>,
-
-    /// Likes account to keep track of history
-    #[account(
-      init,
-      payer = liker,
-      space = ANCHOR_DISCRIMINATOR_SIZE + Like::INIT_SPACE,
-      seeds = [b"like", liker.key().as_ref(), profile.key().as_ref(),  &profile.like_count.to_le_bytes()],
-      bump
-    )]
-    pub like: Account<'info, Like>,
-
-    pub system_program: Program<'info, System>
-}
-
-#[derive(Accounts)]
-#[instruction(amount: u64)]
-pub struct WithdrawLikes<'info> {
-      #[account(mut)]
-      pub authority: Signer<'info>,
-
-      #[account(
-          mut,
-          has_one = authority
-      )]
-      pub profile: Account<'info, Profile>,
-
-      #[account(
-          mut,
-          seeds = [b"vault", profile.key().as_ref()],
-          bump
-      )]
-      /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
-      pub vault: UncheckedAccount<'info>,
-
-      /// Destination account that will receive the withdrawn SOL
-      /// Allows the charity authority to send funds to a different address than their own
-      /// Why `UncheckedAccount`:
-      /// - We're only transferring SOL (no deserialization required)
-      /// - We're not enforcing any constraints on it through Anchor's account validation
-      #[account(mut)]
-      /// CHECK: Safe because it's a PDA with known seeds and only receives SOL via system program
-      pub recipient: UncheckedAccount<'info>,
-
-      pub system_program: Program<'info, System>,
 }
