@@ -4,15 +4,12 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::system_instruction;
 
 pub mod common;
-pub mod events;
 pub mod state;
 pub mod instructions;
 
 use crate::common::*;
 use crate::instructions::*;
-
-pub use events::*;
-use crate::state::*;
+use crate::state::Profile;
 
 declare_id!("coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF");
 
@@ -292,7 +289,4 @@ pub mod secret {
 
       Ok(())
   }
-
-
-
 }
