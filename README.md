@@ -10,6 +10,14 @@ Sign a transaction to create an account.
 
 Store photo on IPFS.
 
+Create Profile: Set up your profile with custom name, bio, and what you are looking for.
+Like with real SOL: Send directly to profiles of your choice
+Track Likes: View complete like history and statistics
+Withdraw Funds: Profile owner can withdraw likes in form of sol
+Pause/Resume: Temporarily pause likes when needed
+Transparent History: All likes are permanently recorded on the blockchain
+
+
 🔍 Browse & Swipe
 Fetch a list of profiles from the chain.
 
